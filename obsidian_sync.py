@@ -470,7 +470,13 @@ SORT score DESC, profile_match_pct DESC
         f.write(content.strip() + "\n")
 
 
-def send_notification(jobs, min_score=95, force: bool = False):
+try:
+    from telegram_notify import notify_new_jobs
+except ImportError:
+    notify_new_jobs = None
+
+
+def send_notification(jobs, min_score=95, force: bool = False, telegram: bool = True):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     with conn:
@@ -508,6 +514,15 @@ def send_notification(jobs, min_score=95, force: bool = False):
         except Exception:
             pass
 
+    # Telegram notification dispatch
+    if telegram and notify_new_jobs:
+        try:
+            ok = notify_new_jobs(eligible_jobs)
+            if ok:
+                print(f"[+] Dispatched Telegram alert for {len(eligible_jobs)} roles.")
+        except Exception as e:
+            print(f"[-] Telegram dispatch error: {e}", file=sys.stderr)
+
     # Mark as notified in database
     notified_ids = [j["id"] for j in eligible_jobs]
     with conn:
@@ -527,6 +542,7 @@ def main():
     parser.add_argument("--by-profile", action="store_true", help="Sort highest profile match first")
     parser.add_argument("--notify", action="store_true", help="Send desktop notification for top picks")
     parser.add_argument("--force-notify", action="store_true", help="Notify all qualifying roles, bypassing delta check")
+    parser.add_argument("--no-telegram", dest="telegram", action="store_false", default=True, help="Disable Telegram alerts")
     parser.add_argument("--no-prune", dest="prune", action="store_false", default=True, help="Disable pruning of inactive jobs")
     parser.add_argument("--max-archive-days", type=int, default=365, help="Days to retain archived jobs before deletion (default: 365)")
 
@@ -542,7 +558,7 @@ def main():
     )
 
     if args.notify:
-        send_notification(jobs, min_score=args.min_score, force=args.force_notify)
+        send_notification(jobs, min_score=args.min_score, force=args.force_notify, telegram=args.telegram)
 
 
 if __name__ == "__main__":
