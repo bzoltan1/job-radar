@@ -249,3 +249,13 @@ companies:
     eor_supported: true
     allow_austria: true
     notes: "Crash symbolication, native DWARF/ELF inspection, Rust, tracing. Vienna hub & Remote in Europe."
+
+  - id: backblaze
+    name: "Backblaze"
+    tier: enterprise_infra
+    category: "Cloud Storage & Infrastructure"
+    ats: greenhouse
+    board: backblaze
+    entity_in_italy: false
+    eor_supported: true
+    notes: "B2 Cloud Storage, Storage Pods, ZFS/ext4, distributed storage. US/LATAM/Europe DC."

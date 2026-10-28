@@ -274,6 +274,17 @@ PEER_CATALOG = [
         "eor_supported": True,
         "notes": "Crash symbolication, native DWARF/ELF inspection, Rust, tracing. Remote in Europe & US.",
     },
+    {
+        "id": "backblaze",
+        "name": "Backblaze",
+        "category": "Cloud Storage & Infra",
+        "tier": "enterprise_infra",
+        "ats": "greenhouse",
+        "board": "backblaze",
+        "entity_in_italy": False,
+        "eor_supported": True,
+        "notes": "B2 Cloud Storage, Storage Pods, ZFS/ext4, distributed storage. US/LATAM/Europe DC.",
+    },
 ]
 
 
