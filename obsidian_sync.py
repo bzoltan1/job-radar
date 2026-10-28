@@ -22,6 +22,17 @@ def sanitize_filename(name: str) -> str:
     return cleaned[:80]
 
 
+TARGETS_FILE = os.path.join(os.path.dirname(__file__), "targets.yaml")
+
+
+def load_targets_map():
+    if not os.path.exists(TARGETS_FILE):
+        return {}
+    with open(TARGETS_FILE, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    return {c["id"]: c for c in data.get("companies", [])}
+
+
 def load_company_intel():
     if not os.path.exists(INTEL_FILE):
         return {}
@@ -33,23 +44,11 @@ def load_company_intel():
 def get_jobs(min_score: int, by_salary: bool = False, by_profile: bool = False, italy_only: bool = False):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    targets_map = load_targets_map()
+
     query = """
-        SELECT j.*, c.name as company_name, c.entity_in_italy, c.eor_supported
+        SELECT j.*
         FROM jobs j
-        LEFT JOIN (
-            SELECT 'canonical' as id, 'Canonical' as name, 0 as entity_in_italy, 1 as eor_supported UNION ALL
-            SELECT 'redhat', 'Red Hat', 1, 1 UNION ALL
-            SELECT 'cloudflare', 'Cloudflare', 1, 1 UNION ALL
-            SELECT 'datadog', 'Datadog', 1, 1 UNION ALL
-            SELECT 'sysdig', 'Sysdig', 1, 1 UNION ALL
-            SELECT 'purestorage', 'Pure Storage', 1, 1 UNION ALL
-            SELECT 'mongodb', 'MongoDB', 1, 1 UNION ALL
-            SELECT 'palantir', 'Palantir', 1, 1 UNION ALL
-            SELECT 'docker', 'Docker', 0, 1 UNION ALL
-            SELECT 'grafanalabs', 'Grafana Labs', 0, 1 UNION ALL
-            SELECT 'elastic', 'Elastic', 1, 1 UNION ALL
-            SELECT 'gitlab', 'GitLab', 0, 1
-        ) c ON j.company_id = c.id
         WHERE j.active = 1 AND j.score >= ?
     """
     params = [min_score]
@@ -65,7 +64,17 @@ def get_jobs(min_score: int, by_salary: bool = False, by_profile: bool = False, 
 
     rows = conn.execute(query, params).fetchall()
     conn.close()
-    return rows
+
+    enriched_jobs = []
+    for r in rows:
+        d = dict(r)
+        comp = targets_map.get(d["company_id"], {})
+        d["company_name"] = comp.get("name", d["company_id"].capitalize())
+        d["entity_in_italy"] = comp.get("entity_in_italy", False)
+        d["eor_supported"] = comp.get("eor_supported", True)
+        enriched_jobs.append(d)
+
+    return enriched_jobs
 
 
 def parse_existing_frontmatter(content: str):
