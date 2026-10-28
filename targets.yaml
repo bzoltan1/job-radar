@@ -1,0 +1,251 @@
+# Seed configuration of target companies
+# Categories:
+#   tier: big_tech | enterprise_infra | scaleup
+#   entity_in_italy: true (Direct S.r.l./branch) | false
+#   eor_supported: true (Known to hire via Deel, Remote.com, CXC, etc.) | false | unknown
+
+companies:
+  - id: cloudflare
+    name: "Cloudflare"
+    tier: big_tech
+    category: "Edge & Networking"
+    ats: greenhouse
+    board: cloudflare
+    entity_in_italy: true
+    eor_supported: true
+    notes: "Cloudflare Italy S.r.l. exists. Linux kernel, systems, Rust/Go."
+
+  - id: sysdig
+    name: "Sysdig"
+    tier: enterprise_infra
+    category: "Security & eBPF"
+    ats: lever
+    board: sysdig
+    entity_in_italy: true
+    eor_supported: true
+    notes: "Sysdig Italy S.r.l. (Milan office). Deep eBPF, kernel, C++, Go."
+
+  - id: canonical
+    name: "Canonical"
+    tier: enterprise_infra
+    category: "OS & Linux Platform"
+    ats: greenhouse
+    board: canonical
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Home-based EMEA/Worldwide. Full employee contract via EOR in Italy."
+
+  - id: datadog
+    name: "Datadog"
+    tier: enterprise_infra
+    category: "Observability & Systems"
+    ats: greenhouse
+    board: datadog
+    entity_in_italy: true
+    eor_supported: true
+    notes: "Datadog Italy S.r.l. exists. Heavy Go, C, eBPF, Linux."
+
+  - id: redhat
+    name: "Red Hat"
+    tier: big_tech
+    category: "OS & Enterprise Linux"
+    ats: workday
+    board: redhat
+    site: jobs
+    sub_domain: wd5
+    entity_in_italy: true
+    eor_supported: true
+    notes: "Red Hat Italy S.r.l. Main peer to <employer>. Heavy Linux/Kernel/Platform."
+
+  - id: purestorage
+    name: "Pure Storage"
+    tier: enterprise_infra
+    category: "Enterprise Storage & Systems"
+    ats: greenhouse
+    board: purestorage
+    entity_in_italy: true
+    eor_supported: true
+    notes: "Pure Storage Italy S.r.l. (Milan). Low-level storage OS, C/C++, Linux kernel."
+
+  - id: mongodb
+    name: "MongoDB"
+    tier: big_tech
+    category: "Distributed DB & Systems"
+    ats: greenhouse
+    board: mongodb
+    entity_in_italy: true
+    eor_supported: true
+    notes: "MongoDB Italy S.r.l. WiredTiger storage engine (C), Atlas cloud (Go)."
+
+  - id: palantir
+    name: "Palantir Technologies"
+    tier: big_tech
+    category: "Enterprise Data & Systems"
+    ats: lever
+    board: palantir
+    entity_in_italy: true
+    eor_supported: true
+    notes: "Palantir Technologies Italy S.r.l. (Milan). High-scale distributed systems."
+
+  - id: grafanalabs
+    name: "Grafana Labs"
+    tier: enterprise_infra
+    category: "Observability & Infra"
+    ats: greenhouse
+    board: grafanalabs
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Fully distributed. Explicit 'Italy (Remote)' listings. Go, eBPF, Prometheus."
+
+  - id: elastic
+    name: "Elastic"
+    tier: enterprise_infra
+    category: "Search & Systems"
+    ats: greenhouse
+    board: elastic
+    entity_in_italy: true
+    eor_supported: true
+    notes: "Distributed by design. Hires remote employees in Italy."
+
+  - id: gitlab
+    name: "GitLab"
+    tier: enterprise_infra
+    category: "DevOps & Cloud Infra"
+    ats: greenhouse
+    board: gitlab
+    entity_in_italy: false
+    eor_supported: true
+    notes: "100% remote. Hires in Italy as employee via CXC / EOR."
+
+  - id: docker
+    name: "Docker"
+    tier: enterprise_infra
+    category: "Containers & Platform"
+    ats: ashby
+    board: docker
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Container platform, Go, Linux."
+
+  - id: fastly
+    name: "Fastly"
+    tier: enterprise_infra
+    category: "Edge & Systems"
+    ats: greenhouse
+    board: fastly
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Edge cloud, Linux kernel, networking."
+
+  - id: cockroachlabs
+    name: "Cockroach Labs"
+    tier: scaleup
+    category: "Distributed Systems & DB"
+    ats: greenhouse
+    board: cockroachlabs
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Distributed SQL in Go. Remote EMEA roles."
+
+  - id: temporal
+    name: "Temporal Technologies"
+    tier: scaleup
+    category: "Distributed Systems & Orchestration"
+    ats: ashby
+    board: temporal
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Workflow engine, Go. Remote friendly."
+
+  - id: aws
+    name: "Amazon Web Services (AWS)"
+    tier: big_tech
+    category: "Cloud Infrastructure & OS"
+    ats: amazon
+    board: amazon
+    entity_in_italy: true
+    eor_supported: true
+    notes: "Amazon Italia Services S.r.l. (Milan & Asti NICE DCV). Bottlerocket, Amazon Linux, Firecracker, Linux Kernel."
+
+  - id: siderolabs
+    name: "Sidero Labs"
+    tier: scaleup
+    category: "Container OS & Kubernetes"
+    ats: sidero
+    board: siderolabs
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Talos Linux, Omni. 100% remote (Europe/US). Go, Linux kernel, immutable OS."
+
+  - id: dynatrace
+    name: "Dynatrace"
+    tier: enterprise_infra
+    category: "Observability & Linux Platform"
+    ats: dynatrace
+    board: dynatrace
+    entity_in_italy: true
+    eor_supported: true
+    allow_austria: true
+    notes: "Dynatrace Italy S.r.l. (Milan) & Linz/Vienna Labs. Deep Linux agents, eBPF, OneAgent, distributed tracing."
+
+  - id: proxmox
+    name: "Proxmox Server Solutions"
+    tier: enterprise_infra
+    category: "Virtualization & Linux Platform"
+    ats: proxmox
+    board: proxmox
+    entity_in_italy: false
+    eor_supported: true
+    allow_austria: true
+    notes: "Proxmox VE, PBS, Kernel, QEMU/KVM, Debian, Rust. Vienna / Remote."
+
+  - id: chainguard
+    name: "Chainguard"
+    tier: scaleup
+    category: "Container OS & Supply Chain"
+    ats: greenhouse
+    board: chainguard
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Wolfi Linux, minimal container OS, apk packaging, security. 100% remote (Europe/US)."
+
+  - id: clickhouse
+    name: "ClickHouse"
+    tier: enterprise_infra
+    category: "Distributed Systems & DB"
+    ats: ashby
+    board: clickhouse
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Columnar OLAP engine, C++20, high-performance systems. Dedicated EMEA remote team."
+
+  - id: supabase
+    name: "Supabase"
+    tier: scaleup
+    category: "Cloud Native & Data Platform"
+    ats: ashby
+    board: supabase
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Open source cloud platform, Postgres, Go, containers, microVMs. 100% remote worldwide."
+
+  - id: tailscale
+    name: "Tailscale"
+    tier: scaleup
+    category: "Networking & Security"
+    ats: greenhouse
+    board: tailscale
+    entity_in_italy: false
+    eor_supported: true
+    notes: "WireGuard mesh networking, Go, Linux network stack. 100% remote (Europe/US)."
+
+  - id: sentry
+    name: "Sentry"
+    tier: enterprise_infra
+    category: "Observability & Error Tracing"
+    ats: ashby
+    board: sentry
+    entity_in_italy: false
+    eor_supported: true
+    allow_austria: true
+    notes: "Crash symbolication, native DWARF/ELF inspection, Rust, tracing. Vienna hub & Remote in Europe."

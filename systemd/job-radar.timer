@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Job Radar twice daily at 01:04 AM and 01:04 PM
+
+[Timer]
+OnCalendar=*-*-* 01:04:00
+OnCalendar=*-*-* 13:04:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

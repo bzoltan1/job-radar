@@ -1,0 +1,11 @@
+[Unit]
+Description=Job Radar Scraper & Obsidian Sync
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=~/ws/job-radar
+ExecStart=~/ws/job-radar/run_radar_cron.sh
+StandardOutput=journal
+StandardError=journal
