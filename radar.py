@@ -1208,6 +1208,94 @@ def cmd_apply(args):
     cmd_status(args)
 
 
+def sanitize_filename(name):
+    cleaned = re.sub(r'[\\/*?:"<>|]', "", name)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned[:80]
+
+
+def cmd_draft(args):
+    conn = get_db()
+    intel_data = load_company_intel()
+    job_id = args.job_id
+    row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    if not row:
+        row = conn.execute("SELECT * FROM jobs WHERE id LIKE ? OR title LIKE ? LIMIT 1", (f"%{job_id}%", f"%{job_id}%")).fetchone()
+
+    if not row:
+        print(f"[-] Job not found: '{job_id}'")
+        return
+
+    cid = row["company_id"]
+    comp_info = intel_data.get(cid, {})
+    comp_name = comp_info.get("name", cid.capitalize())
+    title = row["title"]
+    location = row["location"]
+    matched_skills = [s.strip() for s in (row["matched_skills"] or "").split(",") if s.strip()]
+    pitch_bullets = [p.strip() for p in (row["pitch_bullets"] or "").splitlines() if p.strip()]
+    insider_tip = comp_info.get("interview_process", {}).get("insider_tips", "")
+
+    draft_md = f"""# Application Pitch & Cover Letter: {title}
+**Target Company**: {comp_name}  
+**Candidate**: Candidate (Staff Systems / Linux Platform Engineer)  
+**Role**: {title}  
+**Location / Remote**: {location}  
+**Score**: {row['score']} pts | **Profile Match**: {row['profile_match_pct']}%  
+
+---
+
+## ✉️ Tailored Introduction / Cover Letter
+
+Dear Hiring Team at {comp_name},
+
+I am writing to express my strong interest in the **{title}** role at **{comp_name}**. With over many years of deep Linux systems experience—including my current work at <employer> on OS runtime qualification, QEMU/KVM virtual machine test orchestration, and low-level Linux performance tuning—I have followed {comp_name}'s infrastructure engineering with great admiration.
+
+My background aligns directly with the architectural challenges of this position:
+"""
+
+    for b in pitch_bullets:
+        draft_md += f"- **Technical Proof Point**: {b}\n"
+
+    draft_md += f"""
+In addition to runtime test automation for enterprise Linux distributions, I have engineered concurrent system daemons in Go and low-level tools in C, authored multi-architecture VM testing runners (`a QEMU VM runner`), and published extensive technical research on dynamic binary instrumentation and eBPF tracing (`binary-coverage research`).
+
+I would welcome the opportunity to discuss how my systems engineering foundation and production debugging experience can contribute to {comp_name}'s team.
+
+Best regards,  
+**Candidate**  
+GitHub / Technical Blog: https://example.com  
+Location: Italy (Eligible for {comp_info.get('contract_type', 'Employee contract / EOR')})
+
+---
+
+## 🎯 Interview Talking Points & Strategy
+{insider_tip if insider_tip else 'Focus on low-level Linux primitives, rootless namespaces, and end-to-end debugging under concurrency.'}
+
+### Key Skills to Emphasize:
+"""
+    for s in matched_skills:
+        draft_md += f"- `{s}`\n"
+
+    draft_md += f"""
+### Reference Publications & Repositories:
+- **binary-coverage research (Dynamic Tracing & Instrumentation)**: https://example.com/posts/
+- **a QEMU VM runner (Multi-Architecture QEMU VM Runner)**: <employer> QE validation tooling
+- **Linux Test Project (LTP) & OS Qualification**: <employer> enterprise automated testing
+"""
+
+    if args.save:
+        vault_path = args.vault or "~/sync/ObsidianNotes"
+        drafts_dir = os.path.join(vault_path, "drafts")
+        os.makedirs(drafts_dir, exist_ok=True)
+        fname = f"{sanitize_filename(comp_name)} - {sanitize_filename(title)} Pitch.md"
+        out_path = os.path.join(drafts_dir, fname)
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(draft_md.strip() + "\n")
+        print(f"[+] Application pitch draft written to: {out_path}")
+    else:
+        print(f"\n{draft_md}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Job Radar CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1236,6 +1324,11 @@ def main():
     p_apply = sub.add_parser("apply", help="Mark a role as applied directly")
     p_apply.add_argument("job_id", help="Job ID or title substring")
 
+    p_draft = sub.add_parser("draft", help="Generate tailored application pitch and cover letter")
+    p_draft.add_argument("job_id", help="Job ID or title substring")
+    p_draft.add_argument("--save", action="store_true", help="Save markdown pitch note into Obsidian drafts/")
+    p_draft.add_argument("--vault", default="~/sync/ObsidianNotes", help="Obsidian vault path")
+
     p_comp = sub.add_parser("company", help="View company intelligence dossier (reviews, interview process, legal entity)")
     p_comp.add_argument("company_id", help="Company ID (e.g. cloudflare, sysdig, redhat, purestorage)")
 
@@ -1252,6 +1345,8 @@ def main():
         cmd_status(args)
     elif args.command == "apply":
         cmd_apply(args)
+    elif args.command == "draft":
+        cmd_draft(args)
     elif args.command == "company":
         cmd_company(args)
     elif args.command == "stats":
