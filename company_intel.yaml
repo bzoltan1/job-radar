@@ -420,3 +420,108 @@ companies:
         - "2. Technical Screening (60m): Coding and systems fundamentals in Go, Python, Java, or C/C++."
         - "3. Virtual Onsite Loop (3-4 rounds): Storage systems design, high-availability architecture, failure domains, and practical debugging."
         - "4. Leadership & Culture Fit: Cross-functional collaboration and pragmatic problem solving."
+
+  percona:
+    name: "Percona"
+    tier: "Enterprise Infra / Open Source DB"
+    glassdoor_rating: 4.5
+    recommend_to_friend: "89%"
+    ceo_approval: "93%"
+    italy_legal_entity: "None (hiring in Europe via EOR / Deel)"
+    contract_type: "Permanent European Employee Contract via EOR"
+    remote_policy: "100% Remote-First (All-remote pioneer since 2006)"
+    emea_staff_comp_range: "€95,000 - €155,000 + Bonus"
+    culture_and_wlb:
+      summary: "Global leader in enterprise open-source database software and telemetry tooling (PMM, Percona Server for MySQL/PostgreSQL/MongoDB). Mature asynchronous culture, worldwide distributed team across 50+ countries, high autonomy, deep Linux performance tuning."
+      pros: ["True all-remote pioneer with zero office politics", "Deep technical focus on database internals, Linux kernel I/O, and query optimization", "Strong work-life balance and supportive engineering culture"]
+      cons: ["Enterprise support obligations require disciplined on-call shifts", "Public cloud database competition requires ongoing product modernization"]
+    interview_process:
+      stages:
+        - "1. Recruiter Screen (30m): Background, remote workflow, compensation alignment."
+        - "2. Technical Screen (60m): Linux systems, database internals, concurrency in Go or C/C++."
+        - "3. Systems Design & Troubleshooting (60m): High-availability clusters, replication lag, memory bottlenecks."
+        - "4. Engineering Management & Culture Fit: Team collaboration and remote communication."
+
+  ciq:
+    name: "CIQ (Ctrl IQ)"
+    tier: "Enterprise Infra / Enterprise Linux & HPC"
+    glassdoor_rating: 4.4
+    recommend_to_friend: "88%"
+    ceo_approval: "95%"
+    italy_legal_entity: "None (hiring in Europe via EOR / Deel)"
+    contract_type: "Permanent Employee Contract via EOR"
+    remote_policy: "100% Remote (US & Europe)"
+    emea_staff_comp_range: "€115,000 - €175,000 + Equity"
+    culture_and_wlb:
+      summary: "Founded by Gregory Kurtzer (creator of CentOS, Rocky Linux, Singularity/Apptainer, Warewulf). Commercial sponsor and core engineering engine of Rocky Linux, enterprise live kernel patching, and high-performance computing (HPC) infrastructure."
+      pros: ["Direct work on Rocky Linux kernel, distro engineering, and HPC clustering", "Elite enterprise Linux peer group and open-source foundation", "100% remote-first engineering team with high autonomy"]
+      cons: ["Startup operating in high-stakes competition with Red Hat / IBM", "Enterprise customer SLAs require rapid patch delivery"]
+    interview_process:
+      stages:
+        - "1. Initial Chat (30m): Alignment on background, open-source pedigree, remote culture."
+        - "2. Technical Deep Dive (60-90m): Linux kernel internals, distro packaging, live patching (kpatch), C programming."
+        - "3. Practical Architecture Discussion: Reviewing real Rocky Linux kernel build/patching or Apptainer container scenarios."
+        - "4. Founders & Leadership Fit: Engineering philosophy and roadmap alignment."
+
+  tuxcare:
+    name: "TuxCare"
+    tier: "Enterprise Infra / Linux Kernel Security"
+    glassdoor_rating: 4.2
+    recommend_to_friend: "82%"
+    ceo_approval: "88%"
+    italy_legal_entity: "None (CloudLinux Inc. brand; hiring via EOR in Europe)"
+    contract_type: "Permanent European Contract via EOR"
+    remote_policy: "100% Remote (Europe, Americas)"
+    emea_staff_comp_range: "€100,000 - €160,000 + Bonus"
+    culture_and_wlb:
+      summary: "Industry pioneer in automated live kernel patching (KernelCare), shared library live patching (LibCare), and extended lifecycle support for enterprise Linux (CentOS, Ubuntu, Debian, RHEL). Highly distributed, systems-heavy engineering team."
+      pros: ["Cutting-edge work on rebootless live kernel and library patching", "100% remote-first engineering culture with global teammates", "Critical security infrastructure trusted by thousands of enterprise fleets"]
+      cons: ["Kernel patching requires absolute precision (zero tolerance for kernel panics)", "Fast-moving CVE response cycles"]
+    interview_process:
+      stages:
+        - "1. Recruiter Screen (30m): Background, systems experience, compensation expectations."
+        - "2. Low-Level Systems & C/Go (60m): Linux memory models, ftrace, kprobes, ELF symbols, syscalls."
+        - "3. Live Patching & Vulnerability Review: Debugging kernel patches and memory safety."
+        - "4. Engineering Management Chat: Alignment on remote workflow and team dynamics."
+
+  cloudlinux:
+    name: "CloudLinux"
+    tier: "Enterprise Infra / Linux OS & Web Hosting"
+    glassdoor_rating: 4.2
+    recommend_to_friend: "82%"
+    ceo_approval: "88%"
+    italy_legal_entity: "None (CloudLinux Inc.; hiring via EOR in Europe)"
+    contract_type: "Permanent European Contract via EOR"
+    remote_policy: "100% Remote-First"
+    emea_staff_comp_range: "€95,000 - €150,000 + Bonus"
+    culture_and_wlb:
+      summary: "Creators of CloudLinux OS (multi-tenant shared hosting OS based on RHEL/AlmaLinux), CageFS (isolated filesystem virtualization), and AlmaLinux OS Foundation sponsor. Pragmatic, engineering-led, 100% remote since inception."
+      pros: ["Decades of deep Linux distribution engineering experience", "Direct involvement in AlmaLinux open-source enterprise Linux ecosystem", "True 100% remote work with flexible asynchronous hours"]
+      cons: ["Legacy codebase alongside modern security products", "Web hosting hosting provider market demands high backward compatibility"]
+    interview_process:
+      stages:
+        - "1. Recruiter Interview (30m): Experience overview and remote setup."
+        - "2. Technical Assessment (60m): Linux kernel, packaging, namespaces, C/Python/Go."
+        - "3. Architectural Review: Multi-tenant process isolation, filesystem sandboxing, resource governance."
+        - "4. Leadership & Culture Alignment: Final offer and team onboarding."
+
+  n8n:
+    name: "n8n"
+    tier: "Scaleup / Workflow Automation"
+    glassdoor_rating: 4.6
+    recommend_to_friend: "92%"
+    ceo_approval: "96%"
+    italy_legal_entity: "n8n GmbH (Berlin, Germany; hiring across Europe via direct contract / EOR)"
+    contract_type: "Permanent European Contract (German contract or EOR)"
+    remote_policy: "Remote-First in Europe (Berlin office available)"
+    emea_staff_comp_range: "€90,000 - €150,000 + Stock Options"
+    culture_and_wlb:
+      summary: "Leading fair-code workflow automation platform. High-velocity developer adoption, transparent community, strong product-led growth, modern TypeScript/Node.js, Docker/Kubernetes self-hosted and cloud infrastructure."
+      pros: ["Vibrant open-source/fair-code project loved by technical developers", "Fast-growing scaleup with high autonomy and modern tech stack", "Supportive European remote engineering team"]
+      cons: ["Rapid growth brings frequent architectural refactoring", "Balancing self-hosted community demands with managed cloud SLAs"]
+    interview_process:
+      stages:
+        - "1. Recruiter Chat (30m): Background, interests, remote workflow."
+        - "2. Technical Pairing / Practical Task (60m): Code architecture, debugging, systems logic."
+        - "3. Infrastructure & Scalability Design (60m): High-throughput queueing, worker execution, container sandboxing."
+        - "4. Founders & Values Alignment: Collaborative spirit and engineering standards."

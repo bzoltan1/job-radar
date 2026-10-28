@@ -34,6 +34,7 @@ Raw HTML scraping brittle. 90% target tech companies use standard ATS with publi
 | **Sidero Labs** | Direct career extraction via `https://www.siderolabs.com/careers/` | None | Low |
 | **Dynatrace** | SuccessFactors query via `https://apply.careers.dynatrace.com/search/` | None | Low |
 | **Proxmox** | Direct portal extraction via `https://www.proxmox.com/en/about/careers` | None | Low |
+| **Workable** | `POST https://apply.workable.com/api/v3/accounts/{account}/jobs` | None | Low |
 
 **Rule**: Target ATS JSON endpoints first. Fallback to headless browser (Playwright) only for custom career pages.
 
