@@ -14,6 +14,6 @@ fi
 echo "=== [$(date '+%Y-%m-%d %H:%M:%S')] Starting Job Radar sync ==="
 
 /usr/bin/python3 "${SCRIPT_DIR}/radar.py" sync
-/usr/bin/python3 "${SCRIPT_DIR}/obsidian_sync.py" --min-score=80 --notify
+/usr/bin/python3 "${SCRIPT_DIR}/obsidian_sync.py" --min-score=70 --notify
 
 echo "=== [$(date '+%Y-%m-%d %H:%M:%S')] Job Radar sync finished ==="
