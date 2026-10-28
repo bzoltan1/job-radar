@@ -1214,9 +1214,9 @@ VALID_STATUSES = ("new", "reviewing", "applied", "interviewing", "offer", "rejec
 
 
 def find_obsidian_note(job_url, vault_path="~/sync/ObsidianNotes"):
-    jobs_dir = os.path.join(vault_path, "jobs")
-    archive_dir = os.path.join(jobs_dir, "archive")
-    for d in (jobs_dir, archive_dir):
+    offers_dir = os.path.join(vault_path, "jobs", "offers")
+    archive_dir = os.path.join(vault_path, "jobs", "archive")
+    for d in (offers_dir, archive_dir):
         if not os.path.exists(d):
             continue
         for f in os.listdir(d):
@@ -1239,13 +1239,14 @@ def update_note_status(file_path: str, content: str, new_status: str, vault_path
         content,
         flags=re.MULTILINE,
     )
-    jobs_dir = os.path.join(vault_path, "jobs")
-    archive_dir = os.path.join(jobs_dir, "archive")
+    offers_dir = os.path.join(vault_path, "jobs", "offers")
+    archive_dir = os.path.join(vault_path, "jobs", "archive")
     os.makedirs(archive_dir, exist_ok=True)
+    os.makedirs(offers_dir, exist_ok=True)
 
     target_path = file_path
     if new_status in ("archived", "ignore", "rejected"):
-        if os.path.dirname(file_path) == jobs_dir:
+        if os.path.dirname(file_path) == offers_dir:
             target_path = os.path.join(archive_dir, os.path.basename(file_path))
             try:
                 os.remove(file_path)
@@ -1253,7 +1254,7 @@ def update_note_status(file_path: str, content: str, new_status: str, vault_path
                 pass
     else:
         if os.path.dirname(file_path) == archive_dir:
-            target_path = os.path.join(jobs_dir, os.path.basename(file_path))
+            target_path = os.path.join(offers_dir, os.path.basename(file_path))
             try:
                 os.remove(file_path)
             except Exception:
@@ -1386,7 +1387,7 @@ Location: Italy (Eligible for {comp_info.get('contract_type', 'Employee contract
 
     if args.save:
         vault_path = args.vault or "~/sync/ObsidianNotes"
-        drafts_dir = os.path.join(vault_path, "drafts")
+        drafts_dir = os.path.join(vault_path, "jobs", "drafts")
         os.makedirs(drafts_dir, exist_ok=True)
         fname = f"{sanitize_filename(comp_name)} - {sanitize_filename(title)} Pitch.md"
         out_path = os.path.join(drafts_dir, fname)

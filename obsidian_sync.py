@@ -92,7 +92,7 @@ def parse_existing_frontmatter(content: str):
 
 def export_company_dossiers(vault_path: str, intel_data: dict, jobs):
     """Generate dedicated company dossier markdown notes in Obsidian."""
-    comp_dir = os.path.join(vault_path, "companies")
+    comp_dir = os.path.join(vault_path, "jobs", "companies")
     os.makedirs(comp_dir, exist_ok=True)
 
     for cid, info in intel_data.items():
@@ -209,9 +209,10 @@ def prune_obsidian_jobs(vault_path: str, min_score: int = 70, max_archive_days: 
     2. Scan vault/jobs/archive/ for roles archived longer than max_archive_days (default 365):
        Permanently delete them.
     """
-    jobs_dir = os.path.join(vault_path, "jobs")
-    archive_dir = os.path.join(jobs_dir, "archive")
-    if not os.path.exists(jobs_dir):
+    jobs_root = os.path.join(vault_path, "jobs")
+    offers_dir = os.path.join(jobs_root, "offers")
+    archive_dir = os.path.join(jobs_root, "archive")
+    if not os.path.exists(offers_dir):
         return
 
     os.makedirs(archive_dir, exist_ok=True)
@@ -225,10 +226,10 @@ def prune_obsidian_jobs(vault_path: str, min_score: int = 70, max_archive_days: 
     archived_count = 0
     purged_count = 0
 
-    # Step 1: Move inactive jobs from jobs/ to jobs/archive/
-    for fname in os.listdir(jobs_dir):
-        fp = os.path.join(jobs_dir, fname)
-        if not os.path.isfile(fp) or not fname.endswith(".md") or fname == "Job Radar Dashboard.md":
+    # Step 1: Move inactive jobs from jobs/offers/ to jobs/archive/
+    for fname in os.listdir(offers_dir):
+        fp = os.path.join(offers_dir, fname)
+        if not os.path.isfile(fp) or not fname.endswith(".md"):
             continue
 
         try:
@@ -280,12 +281,15 @@ def prune_obsidian_jobs(vault_path: str, min_score: int = 70, max_archive_days: 
 
 
 def export_to_obsidian(vault_path: str, min_score: int = 75, by_salary: bool = False, by_profile: bool = False, prune: bool = True, max_archive_days: int = 365):
-    jobs_dir = os.path.join(vault_path, "jobs")
-    os.makedirs(jobs_dir, exist_ok=True)
+    jobs_root = os.path.join(vault_path, "jobs")
+    offers_dir = os.path.join(jobs_root, "offers")
+    companies_dir = os.path.join(jobs_root, "companies")
+    os.makedirs(offers_dir, exist_ok=True)
+    os.makedirs(companies_dir, exist_ok=True)
 
     intel_data = load_company_intel()
     jobs = get_jobs(min_score, by_salary=by_salary, by_profile=by_profile)
-    print(f"[*] Exporting {len(jobs)} jobs (min score: {min_score}) to Obsidian at: {jobs_dir}")
+    print(f"[*] Exporting {len(jobs)} jobs (min score: {min_score}) to Obsidian at: {offers_dir}")
 
     # Export Company dossiers first
     export_company_dossiers(vault_path, intel_data, jobs)
@@ -299,7 +303,7 @@ def export_to_obsidian(vault_path: str, min_score: int = 75, by_salary: bool = F
         comp_display = c_info.get("name", cid.capitalize())
         title = j["title"]
         base_name = sanitize_filename(f"{comp_display} - {title}")
-        file_path = os.path.join(jobs_dir, f"{base_name}.md")
+        file_path = os.path.join(offers_dir, f"{base_name}.md")
 
         status = "new"
         user_notes = ""
@@ -394,11 +398,11 @@ tags:
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(note_content.strip() + "\n")
 
-    # Generate Obsidian Dashboard
-    dashboard_path = os.path.join(jobs_dir, "Job Radar Dashboard.md")
+    # Generate Obsidian Dashboard directly under jobs/
+    dashboard_path = os.path.join(jobs_root, "Job Radar Dashboard.md")
     write_dashboard(dashboard_path, jobs, intel_data)
     print(f"[+] Obsidian export complete: {exported_count} new, {updated_count} refreshed.")
-    print(f"[+] Company dossiers written to: {os.path.join(vault_path, 'companies')}")
+    print(f"[+] Company dossiers written to: {companies_dir}")
     print(f"[+] Dashboard updated: {dashboard_path}")
 
     if prune:
@@ -432,8 +436,8 @@ tags:
 
 ```dataview
 TABLE score AS "Score", profile_match_pct AS "Match %", salary AS "Salary", company_note AS "Company", location AS "Location", freshness AS "Freshness", status AS "Status", url AS "Link"
-FROM "jobs"
-WHERE file.name != "Job Radar Dashboard" AND status != "archived"
+FROM "jobs/offers"
+WHERE status != "archived"
 SORT score DESC, profile_match_pct DESC
 ```
 
