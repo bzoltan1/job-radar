@@ -132,6 +132,7 @@ def get_db():
             ("profile_match_pct", "INTEGER DEFAULT 0"),
             ("matched_skills", "TEXT DEFAULT ''"),
             ("pitch_bullets", "TEXT DEFAULT ''"),
+            ("notified_at", "TIMESTAMP DEFAULT NULL"),
         ]:
             if col not in existing_cols:
                 conn.execute(f"ALTER TABLE jobs ADD COLUMN {col} {col_def}")

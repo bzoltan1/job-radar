@@ -470,25 +470,53 @@ SORT score DESC, profile_match_pct DESC
         f.write(content.strip() + "\n")
 
 
-def send_notification(jobs, min_score=95):
-    top_picks = [j for j in jobs if j["score"] >= min_score or j["salary_norm_max"] >= 150000]
-    if not top_picks:
-        print("[*] No notifications to send (no new jobs above threshold).")
-        return
+def send_notification(jobs, min_score=95, force: bool = False):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    with conn:
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()}
+        if "notified_at" not in cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN notified_at TIMESTAMP DEFAULT NULL")
 
-    summary = f"Job Radar: Found {len(top_picks)} top offers (Score >={min_score} or Sal >=150k)"
+    # Delta tracking: only consider roles where notified_at IS NULL (unless force is requested)
+    eligible_jobs = []
+    for j in jobs:
+        if j["score"] >= min_score or j["salary_norm_max"] >= 150000:
+            if force:
+                eligible_jobs.append(j)
+            else:
+                row = conn.execute("SELECT notified_at FROM jobs WHERE id = ?", (j["id"],)).fetchone()
+                if row and row["notified_at"] is None:
+                    eligible_jobs.append(j)
+
+    if not eligible_jobs:
+        print("[*] No new unnotified jobs to send (delta check clean).")
+        conn.close()
+        return []
+
+    summary = f"Job Radar: Found {len(eligible_jobs)} new top offers (Score >={min_score} or Sal >=150k)"
     print(f"\n[ALERT] {summary}")
-    for j in top_picks[:5]:
+    for j in eligible_jobs[:5]:
         sal = j["salary_display"] if j["salary_display"] else "No salary listed"
         match_pct = j["profile_match_pct"] or 0
         print(f"  ⚡ [{j['score']} | {match_pct}% match] {j['company_id'].capitalize()}: {j['title']} ({sal}) -> {j['url']}")
 
     if os.path.exists("/usr/bin/notify-send"):
         try:
-            top = top_picks[0]
+            top = eligible_jobs[0]
             os.system(f'/usr/bin/notify-send "Job Radar: Top Match [{top["score"]}]" "{top["company_id"].capitalize()}: {top["title"]}"')
         except Exception:
             pass
+
+    # Mark as notified in database
+    notified_ids = [j["id"] for j in eligible_jobs]
+    with conn:
+        conn.executemany(
+            "UPDATE jobs SET notified_at = CURRENT_TIMESTAMP WHERE id = ?",
+            [(jid,) for jid in notified_ids],
+        )
+    conn.close()
+    return eligible_jobs
 
 
 def main():
@@ -498,6 +526,7 @@ def main():
     parser.add_argument("--by-salary", action="store_true", help="Sort highest paying first")
     parser.add_argument("--by-profile", action="store_true", help="Sort highest profile match first")
     parser.add_argument("--notify", action="store_true", help="Send desktop notification for top picks")
+    parser.add_argument("--force-notify", action="store_true", help="Notify all qualifying roles, bypassing delta check")
     parser.add_argument("--no-prune", dest="prune", action="store_false", default=True, help="Disable pruning of inactive jobs")
     parser.add_argument("--max-archive-days", type=int, default=365, help="Days to retain archived jobs before deletion (default: 365)")
 
@@ -513,7 +542,7 @@ def main():
     )
 
     if args.notify:
-        send_notification(jobs, min_score=args.min_score)
+        send_notification(jobs, min_score=args.min_score, force=args.force_notify)
 
 
 if __name__ == "__main__":
