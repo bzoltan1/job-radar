@@ -116,6 +116,19 @@ def evaluate_profile_match(job_title: str, job_content: str, company_id: str):
             15,
             "Emphasize runtime telemetry instrumentation and custom observability agents."
         ),
+        # 6. SRE, DevOps & Cloud Platform Infrastructure
+        (
+            r"\bsre\b|\bsite reliability\b|\bproduction engineering\b",
+            "Site Reliability Engineering (SRE)",
+            20,
+            "Highlight your experience operating enterprise Linux production environments, automated fault injection, and zero-idle daemon architecture."
+        ),
+        (
+            r"\bdevops\b|\bplatform engineering\b|\bplatform engineer\b|\bci/cd\b|\bkubernetes\b|\bk8s\b",
+            "Platform Engineering & DevOps",
+            20,
+            "Reference your extensive CI/CD validation pipelines, openQA matrix automation, Kubernetes container orchestration, and multi-node fleet management."
+        ),
         (
             r"\blinux\b",
             "Linux Foundation",

@@ -24,14 +24,18 @@ FEED_PATH = os.path.join(os.path.dirname(__file__), "feed.xml")
 TITLE_EXCLUDE_RE = re.compile(
     r"\b("
     r"sales|pre-?sales|solutions?\s+engineer(?:ing)?|solutions?\s+architect(?:ure)?|"
-    r"customer\s+success|customer\s+engineer(?:ing)?|technical\s+account\s+manager|\btam\b|"
-    r"account\s+executive|\bae\b|account\s+manager|\bam\b|business\s+development|\bbdr\b|\bsdr\b|"
+    r"customer\s+success|customer\s+engineer(?:ing)?|"
+    r"technical\s+account\s+manage(?:r|ment|rs)?|\btam\b|"
+    r"account\s+executive|\bae\b|account\s+manage(?:r|ment|rs)?|\bam\b|business\s+development|\bbdr\b|\bsdr\b|"
     r"gtm\b|go-to-market|revops\b|revenue\s+operations|renewals?|"
+    r"deal\s+pricing|monetization|pricing|"
     r"commercial|partner\s+engineer|partner\s+solutions|partner\s+architect|partner\s+manager|alliances?|"
     r"marketing|recruiter|recruiting|talent|legal|counsel|attorney|"
     r"accountant|accounting|payroll|people\s+partner|hr\b|copywriter|content\s+writer|office\s+manager|"
     r"frontend|front-end|react|angular|ui/ux|product\s+designer|graphic\s+designer|finance\s+director|"
     r"deal\s+desk|sales\s+ops|technical\s+enablement|curriculum\s+developer|"
+    r"(?:deal|pricing|monetization|strategy|business|commercial|financial|revenue)\s+analyst|"
+    r"junior|entry[\s-]level|"
     r"interns?|internships?|students?|co-ops?|working\s+students?|apprentices?|loss\s+prevention|"
     r"construction|vendor\s+manager|retail|facility\s+manager|warehouse"
     r")\b",
@@ -39,16 +43,29 @@ TITLE_EXCLUDE_RE = re.compile(
 )
 
 ENGINEERING_TITLE_RE = re.compile(
-    r"\b(software|developer|engineer|architect|sre|devops|technician)\b",
+    r"\b(software|developer|engineer|architect|sre|devops|platform|infrastructure|infra|technician)\b",
     re.IGNORECASE,
 )
 
 SYSTEMS_TITLE_RE = re.compile(
-    r"\b(systems|platform|linux|kernel|ebpf|bpf|infrastructure|infra|sre|site reliability|"
-    r"distributed|runtime|virtualization|container|core os|low-level|storage|networking|"
-    r"cloud platform|kubernetes|cloud infrastructure)\b",
+    r"\b(systems|platform|platform\s+eng(?:ineer(?:ing)?)?|devops|linux|kernel|ebpf|bpf|"
+    r"infrastructure|infra|sre|site\s+reliability|production\s+eng(?:ineer(?:ing)?)?|"
+    r"distributed|runtime|virtualization|container|core\s+os|low-level|storage|networking|"
+    r"cloud\s+platform|kubernetes|cloud\s+infrastructure)\b",
     re.IGNORECASE,
 )
+
+DEVOPS_PLATFORM_SRE_RE = re.compile(
+    r"\b(devops|platform|site\s+reliability|sre|production\s+eng(?:ineer(?:ing)?)?|infrastructure|cloud\s+platform)\b",
+    re.IGNORECASE,
+)
+
+HIGH_PROFILE_SENIORITY_RE = re.compile(
+    r"\b(staff|principal|lead|senior\s+staff|distinguished|head\s+of|director|architect)\b",
+    re.IGNORECASE,
+)
+
+SENIOR_RE = re.compile(r"\b(senior|sr\.?)\b", re.IGNORECASE)
 
 TECH_STACK_RE = re.compile(
     r"\b(golang|go\b|c\b|c\+\+|linux|ebpf|systemd|kernel|kubernetes|docker|perf|syscall|posix)\b",
@@ -806,13 +823,32 @@ def score_job(job, company, first_seen=None):
         score += 15
         tags.append("loc:austria")
 
-    # Systems role relevance
-    if SYSTEMS_TITLE_RE.search(title):
+    # Systems & DevOps / Platform / SRE role relevance
+    is_systems = bool(SYSTEMS_TITLE_RE.search(title))
+    is_high_profile = bool(HIGH_PROFILE_SENIORITY_RE.search(title))
+    is_senior = bool(SENIOR_RE.search(title))
+    is_devops_platform_sre = bool(DEVOPS_PLATFORM_SRE_RE.search(title))
+
+    if is_systems:
         score += 30
         tags.append("role:systems_platform")
+        if is_devops_platform_sre:
+            tags.append("domain:devops_platform_sre")
+        if is_high_profile:
+            score += 20
+            tags.append("seniority:staff_principal_lead")
+        elif is_senior:
+            score += 10
+            tags.append("seniority:senior")
     elif re.search(r"\b(software engineer|senior engineer|staff engineer|principal engineer)\b", title, re.IGNORECASE):
         score += 10
         tags.append("role:swe")
+        if is_high_profile:
+            score += 15
+            tags.append("seniority:staff_principal_lead")
+        elif is_senior:
+            score += 5
+            tags.append("seniority:senior")
 
     # Tech stack match
     matches = TECH_STACK_RE.findall(f"{title} {content}")
