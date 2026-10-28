@@ -228,7 +228,7 @@ def prune_obsidian_jobs(vault_path: str, min_score: int = 70, max_archive_days: 
     # Step 1: Move inactive jobs from jobs/ to jobs/archive/
     for fname in os.listdir(jobs_dir):
         fp = os.path.join(jobs_dir, fname)
-        if not os.path.isfile(fp) or not fname.endswith(".md"):
+        if not os.path.isfile(fp) or not fname.endswith(".md") or fname == "Job Radar Dashboard.md":
             continue
 
         try:
@@ -395,7 +395,7 @@ tags:
             f.write(note_content.strip() + "\n")
 
     # Generate Obsidian Dashboard
-    dashboard_path = os.path.join(vault_path, "Job Radar Dashboard.md")
+    dashboard_path = os.path.join(jobs_dir, "Job Radar Dashboard.md")
     write_dashboard(dashboard_path, jobs, intel_data)
     print(f"[+] Obsidian export complete: {exported_count} new, {updated_count} refreshed.")
     print(f"[+] Company dossiers written to: {os.path.join(vault_path, 'companies')}")
@@ -433,7 +433,7 @@ tags:
 ```dataview
 TABLE score AS "Score", profile_match_pct AS "Match %", salary AS "Salary", company_note AS "Company", location AS "Location", freshness AS "Freshness", status AS "Status", url AS "Link"
 FROM "jobs"
-WHERE status != "archived"
+WHERE file.name != "Job Radar Dashboard" AND status != "archived"
 SORT score DESC, profile_match_pct DESC
 ```
 
