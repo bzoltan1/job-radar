@@ -81,6 +81,31 @@ LOCATION_AUSTRIA_RE = re.compile(
     re.IGNORECASE,
 )
 
+EU_COUNTRY_MAP = {
+    "uk": ("united kingdom", "uk", "london"),
+    "germany": ("germany", "munich", "berlin", "frankfurt"),
+    "france": ("france", "paris"),
+    "netherlands": ("netherlands", "amsterdam"),
+    "spain": ("spain", "madrid", "barcelona"),
+    "italy": ("italy", "italia", "milan", "rome"),
+    "ireland": ("ireland", "dublin"),
+    "poland": ("poland", "warsaw"),
+    "austria": ("austria", "vienna", "wien"),
+    "sweden": ("sweden", "stockholm"),
+    "switzerland": ("switzerland", "zurich", "geneva"),
+    "portugal": ("portugal", "lisbon"),
+    "belgium": ("belgium", "brussels"),
+    "czech": ("czech", "prague"),
+    "denmark": ("denmark", "copenhagen"),
+    "norway": ("norway", "oslo"),
+    "finland": ("finland", "helsinki"),
+}
+
+
+def count_distinct_eu_countries(text: str) -> int:
+    text_lower = text.lower()
+    return len({c for c, syns in EU_COUNTRY_MAP.items() if any(s in text_lower for s in syns)})
+
 B2B_RE = re.compile(
     r"\b(b2b|contractor only|independent contractor|freelance|vat number|partita iva)\b",
     re.IGNORECASE,
@@ -282,6 +307,31 @@ def parse_job_date(raw_date):
     return None
 
 
+def build_greenhouse_location(item):
+    loc_name = (item.get("location") or {}).get("name", "").strip()
+    offices = [o.get("name", "").strip() for o in (item.get("offices") or []) if o and o.get("name")]
+    meta_locs = []
+    for m in (item.get("metadata") or []):
+        if m and "location" in (m.get("name") or "").lower():
+            val = m.get("value")
+            if isinstance(val, list):
+                meta_locs.extend([str(v).strip() for v in val if v])
+            elif val:
+                meta_locs.append(str(val).strip())
+
+    all_places = []
+    for p in offices + meta_locs:
+        if p and p not in all_places and p.lower() != loc_name.lower():
+            all_places.append(p)
+
+    if all_places:
+        if loc_name:
+            return f"{loc_name} ({'; '.join(all_places)})"
+        else:
+            return "; ".join(all_places)
+    return loc_name
+
+
 def fetch_greenhouse(board_id):
     url = f"https://boards-api.greenhouse.io/v1/boards/{board_id}/jobs?content=true"
     req = urllib.request.Request(url, headers={"User-Agent": "JobRadar/1.0"})
@@ -290,7 +340,7 @@ def fetch_greenhouse(board_id):
             data = json.loads(resp.read().decode("utf-8"))
             jobs = []
             for item in data.get("jobs", []):
-                loc = (item.get("location") or {}).get("name", "")
+                loc = build_greenhouse_location(item)
                 jobs.append({
                     "id": f"gh_{board_id}_{item['id']}",
                     "title": item.get("title", ""),
@@ -674,29 +724,44 @@ def score_job(job, company, first_seen=None):
 
     # 2. Location check
     is_direct_italy = bool(LOCATION_ITALY_RE.search(location))
-    is_emea_remote = bool(LOCATION_EMEA_REMOTE_RE.search(f"{title} {location}")) or (location.strip().lower() == "remote")
     is_austria = bool(LOCATION_AUSTRIA_RE.search(location)) if company.get("allow_austria") else False
 
-    # Multi-country European remote check (e.g. GitLab, Elastic)
-    parts = [p.strip() for p in location.split(";") if p.strip()]
-    EU_COUNTRIES = (
-        "ireland", "france", "germany", "netherlands", "spain", "united kingdom",
-        "uk", "austria", "poland", "sweden", "switzerland", "italy", "belgium",
-        "portugal", "denmark", "norway", "finland", "czech", "romania", "emea", "europe",
-    )
-    eu_matches = [c for c in EU_COUNTRIES if c in location.lower()]
-    is_multi_eu = len(parts) >= 2 and len(eu_matches) >= 2
+    # Check for hybrid / on-site constraint
+    is_hybrid = bool(re.search(r"\bhybrid\b", location, re.IGNORECASE))
+    is_onsite = bool(re.search(r"\b(in-office|on-?site)\b", location, re.IGNORECASE))
+
+    # Any hybrid or on-site role strictly requires an Italian office (or Austria if allowed)
+    if (is_hybrid or is_onsite) and not (is_direct_italy or is_austria):
+        return None, 0, [], (0, 0, "", "", 0), {}
+
+    # Geographic check: only match emea/europe/worldwide/global from title, NEVER 'distributed'
+    is_title_geo = bool(re.search(r"\b(emea|europe|worldwide|global)\b", title, re.IGNORECASE))
+    is_loc_geo = bool(LOCATION_EMEA_REMOTE_RE.search(location)) or (location.strip().lower() in ("remote", "distributed"))
+    is_emea_remote = is_title_geo or is_loc_geo
+
+    # Multi-country European remote check (e.g. GitLab, Elastic, Chainguard)
+    distinct_eu_count = count_distinct_eu_countries(location)
+    is_multi_eu = distinct_eu_count >= 2
     if is_multi_eu:
         is_emea_remote = True
+
+    # Check office list inside parentheses if present (e.g. "Distributed (Toronto, Canada)", "Distributed (Austin, TX)")
+    m_offices = re.search(r"\(([^)]+)\)", location)
+    if m_offices:
+        office_str = m_offices.group(1).lower()
+        has_it_office = bool(LOCATION_ITALY_RE.search(office_str))
+        has_at_office = bool(LOCATION_AUSTRIA_RE.search(office_str)) if company.get("allow_austria") else False
+        is_multi_eu_offices = count_distinct_eu_countries(office_str) >= 2
+
+        if not (has_it_office or has_at_office or is_multi_eu_offices or is_multi_eu):
+            return None, 0, [], (0, 0, "", "", 0), {}
 
     is_disqualified = bool(LOCATION_DISQUALIFY_RE.search(location))
 
     if is_multi_eu or is_austria:
         is_single_country_foreign = False
-    elif len(parts) <= 1:
-        is_single_country_foreign = bool(SINGLE_COUNTRY_REMOTE_RE.search(location))
     else:
-        is_single_country_foreign = not is_emea_remote
+        is_single_country_foreign = bool(SINGLE_COUNTRY_REMOTE_RE.search(location))
 
     if (is_disqualified or is_single_country_foreign) and not (is_direct_italy or is_austria):
         return None, 0, [], (0, 0, "", "", 0), {}
