@@ -1,117 +1,131 @@
-# Job Radar: Systems & Platform Architecture
+# Job Radar: Modular Architecture & Plugin System
 
-Target: Automated discovery, scoring, and tracking of Linux/Systems/Cloud Platform engineering roles for Italy-based resident (Employee contract priority: Italian entity or EOR; no freelance/B2B).
+Job Radar is an automated career intelligence and scoring engine specifically tuned for Linux, kernel, and systems platform roles eligible for Italy-based engineers.
 
 ---
 
-## 1. Core Architecture
+## 1. Architectural Pipeline
 
-Pipeline 4 stages:
+Data flows through three distinct plugin layers:
 
 ```
-[Company Discovery] → [ATS Job Fetcher] → [Filter & Scoring Engine] → [Alert / UI / SQLite]
-        │                     │                        │
-  - CNCF / LF           - Greenhouse             - Role Relevance
-  - GitHub orgs         - Lever                  - Contract Type (CCNL/EOR vs B2B)
-  - Peer Graphs         - Ashby                  - Location Filter (IT / EMEA Remote)
-                        - Workday                - Tier Weight (Big Tech > Scaleup)
+[data/targets.yaml]
+        │
+        ▼
+┌─────────────────────────┐
+│   Source Plugins (ATS)  │ ◄── greenhouse, ashby, lever, workday, workable, etc.
+└───────────┬─────────────┘
+            │  list[RawJob]
+            ▼
+┌─────────────────────────┐
+│     Pipeline Stages     │
+│  1. TitleFilterStage    │ ◄── drops non-eng, non-systems
+│  2. LocationStage       │ ◄── Italy (+25), EU-no-Italy (-40), Austria (+15), non-EU drop
+│  3. ContractStage       │ ◄── drops B2B, awards legal entity / EOR bonuses
+│  4. RoleSeniorityStage  │ ◄── systems/SRE relevance (+30), staff/principal (+20), tech stack
+│  5. SalaryStage         │ ◄── EUR normalization, >150k (+35), >120k (+25), >85k (+15)
+│  6. ProfileMatchStage   │ ◄── blog research skill matrix & tailored pitch bullets
+│  7. FreshnessStage      │ ◄── age scoring (<7d +20, >75d -30)
+└───────────┬─────────────┘
+            │  Job (scored & tagged)
+            ▼
+┌─────────────────────────┐
+│   Output Sink Plugins   │
+│  - DatabaseSink         │ ──► sqlite jobs.db
+│  - RssSink              │ ──► feed.xml (RSS 2.0)
+│  - ObsidianSink         │ ──► Vault notes, Kanban, Dataview dashboard
+│  - TelegramSink         │ ──► Bot notifications for new top matches
+│  - DesktopSink          │ ──► notify-send alerts
+└─────────────────────────┘
 ```
 
 ---
 
-## 2. Scraping Strategy: Don't Scrape HTML
+## 2. Directory Layout
 
-Raw HTML scraping brittle. 90% target tech companies use standard ATS with public JSON REST APIs:
-
-| ATS | API Pattern | Auth | Blocking Risk |
-|---|---|---|---|
-| **Greenhouse** | `GET https://boards-api.greenhouse.io/v1/boards/{company}/jobs?content=true` | None | Very Low |
-| **Lever** | `GET https://api.lever.co/v0/postings/{company}?mode=json` | None | Very Low |
-| **Ashby** | `POST https://api.ashbyhq.com/posting-api/job-board/{company}` | None | Very Low |
-| **SmartRecruiters** | `GET https://api.smartrecruiters.com/v1/companies/{company}/postings` | None | Low |
-| **Workday** | `POST https://{tenant}.wd3.myworkdayjobs.com/wday/cxs/{company}/{board}/jobs` | None | Medium (Session/headers) |
-| **Amazon Jobs** | `GET https://www.amazon.jobs/en/search.json?base_query={query}&country={country}` | None | Low |
-| **Sidero Labs** | Direct career extraction via `https://www.siderolabs.com/careers/` | None | Low |
-| **Dynatrace** | SuccessFactors query via `https://apply.careers.dynatrace.com/search/` | None | Low |
-| **Proxmox** | Direct portal extraction via `https://www.proxmox.com/en/about/careers` | None | Low |
-| **Workable** | `POST https://apply.workable.com/api/v3/accounts/{account}/jobs` | None | Low |
-
-**Rule**: Target ATS JSON endpoints first. Fallback to headless browser (Playwright) only for custom career pages.
-
----
-
-## 3. Company Discovery Engine (Finding peer companies)
-
-How to find companies similar to <employer> without manual search:
-
-1. **CNCF Landscape & Linux Foundation Members**:
-   - `landscape.cncf.io/data.json` contains complete machine-readable graph of cloud native / systems companies grouped by layer (Runtime, Orchestration, Observability, Storage).
-   - Filter by: Enterprise members, Gold/Platinum sponsors, Kubernetes contributors.
-2. **Linux & Open Source Ecosystem**:
-   - Red Hat, Canonical, Cloudflare, Fastly, Datadog, Grafana Labs, Docker, Elastic, Cisco (Isovalent/Cilium), SchedMD, Intel, AMD, Arm, Oracle, AWS, Google Cloud, Microsoft Azure.
-3. **Company Profiling & Tiering**:
-   - **Tier 1 (Big Tech / Established Enterprise Infra)**: Score weight: 1.0. (Red Hat, AWS, Google, Microsoft, Cloudflare, Datadog, Cisco, Oracle, Canonical).
-   - **Tier 2 (Solid Scaleup / Late-Stage Infrastructure)**: Score weight: 0.6. (Grafana Labs, Elastic, HashiCorp/IBM, GitLab, Docker, Temporal, Chainguard).
-   - **Tier 3 (Early Startup / Seed / Series A)**: Disqualified (Score: 0 / dropped). Unstable, usually lack EOR or Italian legal presence.
-
----
-
-## 4. Italy Hiring & Contract Validation (Critical Gate)
-
-Goal: Full employee status (`contratto a tempo indeterminato` via local S.r.l./branch or EOR like Deel/Remote.com). Reject B2B / Partita IVA traps.
-
-### Detection Heuristics:
-1. **Location Tag Parsing**:
-   - Match: `"Italy"`, `"Remote - Italy"`, `"EMEA Remote"`, `"Anywhere in Europe"`, `"Milan"`, `"Rome"`.
-   - Reject: `"US Only"`, `"UK Only"`, `"Germany Only"`, `"Americas"`, `"APAC"`.
-2. **Contract Type NLP / Keyword Extraction**:
-   - Positive indicators (+Score):
-     - `"Employee of Record"`, `"Deel"`, `"Remote.com"`, `"Oyster"`, `"Omnipresent"`.
-     - `"Local contract"`, `"permanent contract"`, `"benefits package"`, `"PTO"`, `"CCNL"`.
-   - Negative indicators (-Penalty or Drop):
-     - `"Contractor only"`, `"B2B only"`, `"freelance"`, `"independent contractor"`, `"invoice"`, `"VAT number"`.
-3. **Italian Entity Registry DB**:
-   - Curated lookup of known tech companies with active Italian subsidiaries (e.g., Red Hat Italy S.r.l., Amazon Italia Services S.r.l., Google Italy S.r.l., Cisco Systems Italy S.r.l., Microsoft Italia S.r.l., Datadog Italy S.r.l., Oracle Italia S.r.l.).
-   - If company on entity list → 100% contract confidence.
+```
+job-radar/
+├── data/                         # Decoupled YAML datasets
+│   ├── profile.yaml              # Candidate skills & scoring weights
+│   ├── targets.yaml              # Tracked companies & ATS endpoints
+│   └── intel/                    # Split dossiers (1 file per company)
+│       ├── cloudflare.yaml
+│       ├── datadog.yaml
+│       ├── grafanalabs.yaml
+│       ├── sysdig.yaml
+│       └── ...
+├── radar/                        # Core Python package
+│   ├── __init__.py
+│   ├── config.py                 # Central path & YAML data loaders
+│   ├── models.py                 # RawJob, Job, SalaryInfo, ProfileMatch, CompanyTarget
+│   ├── db.py                     # SQLite schema & query operations
+│   ├── discovery.py              # CNCF & peer company explorer
+│   ├── cli.py                    # Unified CLI command router
+│   ├── sources/                  # Source plugins (dynamic auto-discovery via pkgutil)
+│   │   ├── base.py               # BaseSource interface
+│   │   ├── greenhouse.py
+│   │   ├── ashby.py
+│   │   ├── lever.py
+│   │   ├── workday.py
+│   │   ├── workable.py
+│   │   ├── smartrecruiters.py
+│   │   └── custom.py             # Amazon, Dynatrace, Proxmox, Sidero
+│   ├── pipeline/                 # Modular filtering & scoring stages
+│   │   ├── base.py               # PipelineStage interface
+│   │   ├── engine.py             # PipelineEngine orchestrator
+│   │   ├── title.py              # Title & hard tech exclusions
+│   │   ├── location.py           # Italy, EU-no-Italy, Non-EU filter
+│   │   ├── contract.py           # B2B drop, legal entity bonuses
+│   │   ├── role.py               # Systems/SRE role & seniority scoring
+│   │   ├── salary.py             # Regex parser & EUR normalization
+│   │   ├── profile.py            # Blog skill matrix match & pitch generation
+│   │   └── freshness.py          # Post age & staleness decay
+│   └── sinks/                    # Sink plugins (dynamic auto-discovery)
+│       ├── base.py               # BaseSink interface
+│       ├── db_sink.py            # SQLite updater
+│       ├── rss_sink.py           # feed.xml generator
+│       ├── obsidian_sink.py      # Vault sync & dashboard generator
+│       ├── telegram_sink.py      # Telegram bot alerts
+│       └── desktop_sink.py       # Desktop notification
+├── radar.py                      # Main entrypoint
+├── run_sync.sh                   # Runner script invoked by systemd
+├── run_radar_cron.sh             # Backward-compatibility wrapper for systemd unit
+└── jobs.db                       # Local SQLite database
+```
 
 ---
 
-## 5. Scoring Model
+## 3. Extending the System
 
-$$\text{Final Score} = \text{Tier Score} + \text{Role Match Score} + \text{Entity Score} - \text{Contract Penalty}$$
+### Adding a new ATS Source Plugin
+Create `radar/sources/<name>.py`:
+```python
+from radar.models import CompanyTarget, RawJob
+from radar.sources.base import BaseSource
 
-- **Tier Score**:
-  - Big Tech / Enterprise Leader: +40 pts
-  - Established Infra Scaleup: +20 pts
-  - Early Stage / Unknown: 0 pts (filtered out)
-- **Role Match Score (Systems / Platform focus)**:
-  - Keywords in title (`Systems`, `Linux`, `Platform`, `Kernel`, `Infrastructure`, `eBPF`, `Site Reliability`, `Core OS`, `Runtime`): +30 pts
-  - Stack in description (`Go`, `Golang`, `C`, `systemd`, `Kubernetes`, `Containers`, `ELF`, `low-level`): +20 pts
-  - Non-systems / Application level (`React`, `Frontend`, `Marketing`, `Sales`, `Product Manager`): -100 pts (auto-drop)
-- **Legal / Contract Score**:
-  - Confirmed Italian Entity: +40 pts
-  - Explicit EOR (Deel/Remote) stated: +30 pts
-  - Remote EMEA / Italy generic: +10 pts
-  - Contractor / B2B required: Disqualify (drop)
+class MyAtsSource(BaseSource):
+    ats_name = "myats"
 
----
+    def fetch(self, target: CompanyTarget) -> list[RawJob]:
+        # fetch logic
+        return [...]
+```
+The dynamic loader automatically registers it upon startup.
 
-## 6. Storage & Notification
+### Adding a new Pipeline Stage
+Create `radar/pipeline/<stage>.py` implementing `PipelineStage` and append it to `PipelineEngine.stages` in `radar/pipeline/engine.py`.
 
-- **Database**: SQLite (single file `jobs.db`). Clean schema:
-  - `companies` (id, name, website, ats_type, ats_id, tier, has_italian_entity, eor_supported)
-  - `jobs` (id, company_id, title, location, remote_type, url, score, contract_type, first_seen, last_seen, active)
-  - `job_history` (job_id, status_change, timestamp)
-- **Notification**:
-  - Daily summary via Telegram bot or local terminal report (`job-radar review`).
-  - Score threshold: Only notify if Score >= 70.
+### Adding a new Output Sink
+Create `radar/sinks/<sink>.py`:
+```python
+from radar.models import Job
+from radar.sinks.base import BaseSink
 
----
+class WebhookSink(BaseSink):
+    name = "webhook"
 
-## 7. Production Roadmap & Implementation Phases
-
-1. **Dynamic Target Resolution**: Eliminate hardcoded SQL `UNION ALL` subqueries in `obsidian_sync.py`; query metadata dynamically from `targets.yaml`.
-2. **Delta Notification Tracking**: Track `notified_at` in `jobs.db` to only dispatch notifications on newly discovered roles rather than spamming existing matches.
-3. **Telegram Alert Dispatcher**: Direct Telegram bot alert integration (`chat_id: <chat_id>`) with markdown formatting for mobile notification on cron runs.
-4. **Application Status Management CLI**: Bi-directional status CLI (`radar.py status <job_id> applied|interviewing|offer|archived`) updating SQLite and Obsidian note frontmatter simultaneously.
-5. **Cover Letter & Pitch Drafter**: CLI generator (`radar.py draft <job_id>`) producing markdown application pitches and cold introduction letters tailored to the candidate's <employer>, LTP, a QEMU VM runner, and binary-coverage research background.
+    def export(self, jobs: list[Job], context: dict):
+        # post to webhook
+        pass
+```
+Pass `--sinks db,rss,obsidian,webhook` to invoke it.

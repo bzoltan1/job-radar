@@ -1,0 +1,29 @@
+name: Supabase
+tier: Scaleup / Cloud Native Platform
+glassdoor_rating: 4.8
+recommend_to_friend: 95%
+ceo_approval: 98%
+italy_legal_entity: None (hiring globally via Remote.com / Deel EOR)
+contract_type: Permanent Employee Contract via EOR
+remote_policy: 100% Remote-First (Fully distributed across 40+ countries)
+emea_staff_comp_range: €100,000 - €160,000 + Stock Options
+culture_and_wlb:
+  summary: The open-source Firebase alternative. Full cloud platform built around
+    PostgreSQL, Elixir, Go, and Linux microVM orchestration. High-velocity shipping
+    culture, transparent community engagement.
+  pros:
+  - True remote culture with complete location independence
+  - Vibrant open-source project with passionate developer adoption
+  - High autonomy to build and own major platform subsystems
+  cons:
+  - Hyper-growth environment requires comfort with ambiguity
+  - On-call rotation for multi-tenant cloud infrastructure
+interview_process:
+  stages:
+  - '1. Async Intro / Initial Call (30m): Experience, open-source portfolio, remote
+    culture.'
+  - '2. Technical Pairing / Practical Task (60m): Hands-on systems code or architecture
+    review.'
+  - '3. Platform Systems Architecture (60m): Multi-tenant compute isolation, container
+    orchestration, microVMs.'
+  - '4. Founders & Team Conversation: Alignment on roadmap and developer mindset.'

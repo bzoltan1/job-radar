@@ -1,0 +1,28 @@
+name: ClickHouse
+tier: Enterprise Infra / High-Performance DB
+glassdoor_rating: 4.6
+recommend_to_friend: 91%
+ceo_approval: 95%
+italy_legal_entity: ClickHouse Europe / EOR (Deel / CXC)
+contract_type: Permanent European Employee Contract via EOR
+remote_policy: 100% Remote-First (Dedicated EMEA Remote engineering pool)
+emea_staff_comp_range: €110,000 - €175,000 + RSU Equity
+culture_and_wlb:
+  summary: Global open-source columnar analytical database leader. Relentless focus
+    on raw execution speed, hardware efficiency, vectorized SIMD execution, and low-level
+    Linux performance tuning.
+  pros:
+  - Exceptional engineering caliber and deep systems challenge
+  - High autonomy with dedicated EMEA remote cluster
+  - Strong compensation and equity in a market-defining company
+  cons:
+  - Demanding code performance standards (every cycle counts)
+  - Distributed database consensus and storage edge cases require extreme rigor
+interview_process:
+  stages:
+  - '1. Recruiter Screen (30m): Alignment, background, compensation expectations.'
+  - '2. Low-Level Systems & Coding (60m): Algorithms, memory management, concurrency
+    in C++ or Go.'
+  - '3. Database Architecture & Scale (60m): Storage engines, I/O paths, cache locality,
+    replication.'
+  - '4. Engineering Management & Culture: Team alignment and remote communication.'

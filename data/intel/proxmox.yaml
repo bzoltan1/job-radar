@@ -1,0 +1,31 @@
+name: Proxmox Server Solutions
+tier: Enterprise Infra / Open Source
+glassdoor_rating: 4.2
+recommend_to_friend: 85%
+ceo_approval: 90%
+italy_legal_entity: None (Vienna headquarters; hiring in Europe via Austrian contract
+  or EOR)
+contract_type: Austrian IT-Kollektivvertrag or EOR Employee Contract
+remote_policy: Vienna on-site / Hybrid / Remote for specialized systems roles
+emea_staff_comp_range: €80,000 - €130,000 (Base Kollektivvertrag + experience overpayment)
+culture_and_wlb:
+  summary: Pioneers of open-source server virtualization and backup (Proxmox VE, PBS).
+    Pure Debian foundation, upstream Linux kernel contributions, QEMU/KVM, Ceph, and
+    Rust/C systems programming.
+  pros:
+  - 100% open-source philosophy and upstream engagement
+  - Deep hands-on work with Linux kernel, QEMU/KVM, live migration, and storage
+  - Stable Austrian enterprise with great work-life balance
+  cons:
+  - Base salaries tied to Austrian collective bargaining brackets (though overpayment
+    is standard)
+  - Some roles prefer Vienna proximity
+interview_process:
+  stages:
+  - '1. Application Review: Evaluation of CV, open-source commits, and kernel/Debian
+    background.'
+  - '2. Technical Interview (60-90m): Deep discussion with core developers on Linux
+    kernel, QEMU/KVM, virtualization stacks, or Rust.'
+  - '3. Practical Technical Discussion: Debugging kernel/virtualization scenarios,
+    patch review, architecture.'
+  - 4. Final Offer & Terms.

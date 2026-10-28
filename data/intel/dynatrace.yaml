@@ -1,0 +1,30 @@
+name: Dynatrace
+tier: Enterprise Infra / Observability
+glassdoor_rating: 4.4
+recommend_to_friend: 88%
+ceo_approval: 93%
+italy_legal_entity: Dynatrace Italy S.r.l. (Milan) / Dynatrace Austria GmbH (Linz,
+  Vienna)
+contract_type: Permanent Italian Contract (CCNL) or Austrian IT-Kollektivvertrag
+remote_policy: Hybrid / Flexible in Italy & Austria
+emea_staff_comp_range: €95,000 - €150,000 + Equity
+culture_and_wlb:
+  summary: Global observability and runtime telemetry leader. Dynatrace OneAgent operates
+    at the lowest levels of the Linux kernel and userland runtime via eBPF, uprobes,
+    and dynamic library hooking.
+  pros:
+  - Engineering-driven culture centered in Linz and Vienna R&D labs
+  - Cutting-edge Linux kernel tracing and eBPF technology stack
+  - Italian legal entity in Milan for local employment
+  cons:
+  - Large enterprise product with legacy code alongside modern agents
+  - Release cycles require extensive automated regression qualification
+interview_process:
+  stages:
+  - '1. Recruiter Screen (30m): Background, technical areas, compensation expectations.'
+  - '2. Technical Screen (60m): Operating systems, memory models, dynamic linking,
+    C/C++ or Go.'
+  - '3. Virtual Onsite (3-4 rounds):'
+  - '   - Low-Level Systems: Process memory inspection, ELF, syscalls, tracing overhead.'
+  - '   - System Architecture: High-throughput telemetry ingestion, agent daemon design.'
+  - '   - Culture & Collaboration: Working with distributed R&D hubs across Europe.'

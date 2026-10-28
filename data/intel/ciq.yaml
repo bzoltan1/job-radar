@@ -1,0 +1,29 @@
+name: CIQ (Ctrl IQ)
+tier: Enterprise Infra / Enterprise Linux & HPC
+glassdoor_rating: 4.4
+recommend_to_friend: 88%
+ceo_approval: 95%
+italy_legal_entity: None (hiring in Europe via EOR / Deel)
+contract_type: Permanent Employee Contract via EOR
+remote_policy: 100% Remote (US & Europe)
+emea_staff_comp_range: €115,000 - €175,000 + Equity
+culture_and_wlb:
+  summary: Founded by Gregory Kurtzer (creator of CentOS, Rocky Linux, Singularity/Apptainer,
+    Warewulf). Commercial sponsor and core engineering engine of Rocky Linux, enterprise
+    live kernel patching, and high-performance computing (HPC) infrastructure.
+  pros:
+  - Direct work on Rocky Linux kernel, distro engineering, and HPC clustering
+  - Elite enterprise Linux peer group and open-source foundation
+  - 100% remote-first engineering team with high autonomy
+  cons:
+  - Startup operating in high-stakes competition with Red Hat / IBM
+  - Enterprise customer SLAs require rapid patch delivery
+interview_process:
+  stages:
+  - '1. Initial Chat (30m): Alignment on background, open-source pedigree, remote
+    culture.'
+  - '2. Technical Deep Dive (60-90m): Linux kernel internals, distro packaging, live
+    patching (kpatch), C programming.'
+  - '3. Practical Architecture Discussion: Reviewing real Rocky Linux kernel build/patching
+    or Apptainer container scenarios.'
+  - '4. Founders & Leadership Fit: Engineering philosophy and roadmap alignment.'

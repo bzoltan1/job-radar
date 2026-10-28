@@ -1,0 +1,32 @@
+name: Sysdig
+tier: Enterprise Infrastructure
+glassdoor_rating: 4.2
+recommend_to_friend: 83%
+ceo_approval: 90%
+italy_legal_entity: Sysdig Italy S.r.l. (Headquarters office in Milan)
+contract_type: Permanent Italian Contract (CCNL Metalmeccanico / Terziario)
+remote_policy: Flexible / Remote in Italy
+emea_staff_comp_range: €75,000 - €120,000 + Options
+culture_and_wlb:
+  summary: Founded by Loris Degioanni (co-creator of Wireshark). Strong Italian roots
+    with global presence. Creators of Falco (CNCF graduated). Extremely deep eBPF
+    and runtime security culture.
+  pros:
+  - Italian entity with direct Milan office & full remote flexibility
+  - World-class eBPF, kernel tracing, and Kubernetes security team
+  - Collaborative culture with European core
+  cons:
+  - Scaleup pace — dynamic priorities across cloud security market
+  - Compensation slightly lower than US Big Tech giants
+interview_process:
+  stages:
+  - '1. Talent Partner Screen (30m): Mutual fit, motivation, remote arrangement in
+    Italy.'
+  - '2. Technical Deep Dive / Manager (60m): Discussion of Linux internals, eBPF architecture,
+    cgroups, container runtimes.'
+  - '3. Live Systems Coding (60m): Writing C / Go code interacting with OS primitives,
+    process inspection, or data structures.'
+  - '4. Systems Architecture (60m): Designing runtime monitoring agent with minimal
+    CPU/memory overhead and high packet throughput.'
+  - '5. Team Match & Leadership (45m): Collaboration with detection research, product
+    management, and QA.'

@@ -1,0 +1,30 @@
+name: Sidero Labs
+tier: Scaleup / Cloud Native Infra
+glassdoor_rating: 4.8
+recommend_to_friend: 95%
+ceo_approval: 98%
+italy_legal_entity: None (hiring in Europe via EOR / Deel / Remote.com)
+contract_type: Permanent Employee Contract via EOR
+remote_policy: 100% Remote (Europe / US)
+emea_staff_comp_range: €100,000 - €150,000 + Stock Options
+culture_and_wlb:
+  summary: Creators of Talos Linux (immutable, secure, minimal Linux OS for Kubernetes)
+    and Omni. Remote-first engineering culture with deep systems focus, high autonomy,
+    and direct open-source contributions.
+  pros:
+  - 100% remote-first with genuine async culture
+  - Direct work on modern minimal Linux OS and Kubernetes internals in Go
+  - Flat organization, supportive leadership, zero legacy cruft
+  cons:
+  - Smaller scaleup team means wearing multiple hats across release engineering and
+    support
+  - Equity upside tied to private company growth
+interview_process:
+  stages:
+  - '1. Initial Chat (30m): Culture fit and background overview with engineering leadership.'
+  - '2. Technical Deep Dive (60m): Linux internals, container runtimes, Go systems
+    code, immutability.'
+  - '3. Practical Assignment / Architecture Review: Reviewing real Talos or Omni architecture
+    scenarios.'
+  - '4. Final Team & Founders Chat: Alignment on roadmap, expectations, and remote
+    workflow.'

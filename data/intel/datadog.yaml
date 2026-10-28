@@ -1,0 +1,31 @@
+name: Datadog
+tier: Enterprise Infrastructure
+glassdoor_rating: 4.1
+recommend_to_friend: 82%
+ceo_approval: 89%
+italy_legal_entity: Datadog Italy S.r.l.
+contract_type: Permanent Italian Contract (CCNL Terziario)
+remote_policy: Remote in Italy / Hybrid options
+emea_staff_comp_range: €120,000 - €180,000 + RSU equity
+culture_and_wlb:
+  summary: High-growth observability leader. Acquired Sqreen and several eBPF startups.
+    Heavy Go, C, Python, and eBPF agent development. Engineering-led culture with
+    rigorous operational standards.
+  pros:
+  - Top-tier compensation & liquid RSU equity
+  - Deep observability and systems engineering scale
+  - Direct Italian subsidiary with full employee rights
+  cons:
+  - Fast-paced with high delivery expectations
+  - On-call rotations on tier-1 production services can be demanding
+interview_process:
+  stages:
+  - '1. Recruiter Screen (30m): Background, Italy residency, compensation alignment.'
+  - '2. Technical Phone Screen (60m): Coding and systems fundamentals in Go, Python,
+    or C.'
+  - '3. Onsite / Virtual Loop (4 rounds x 60m):'
+  - '   - Systems Internals: OS concepts, memory management, syscalls, concurrency.'
+  - '   - Coding & Algorithms: Clean, production-ready code with unit tests.'
+  - '   - Large-Scale System Design: Telemetry ingestion pipelines, buffering, time-series
+    storage.'
+  - '   - Behavioral & Collaboration: Working with globally distributed teams.'

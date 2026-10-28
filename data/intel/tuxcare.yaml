@@ -1,0 +1,29 @@
+name: TuxCare
+tier: Enterprise Infra / Linux Kernel Security
+glassdoor_rating: 4.2
+recommend_to_friend: 82%
+ceo_approval: 88%
+italy_legal_entity: None (CloudLinux Inc. brand; hiring via EOR in Europe)
+contract_type: Permanent European Contract via EOR
+remote_policy: 100% Remote (Europe, Americas)
+emea_staff_comp_range: €100,000 - €160,000 + Bonus
+culture_and_wlb:
+  summary: Industry pioneer in automated live kernel patching (KernelCare), shared
+    library live patching (LibCare), and extended lifecycle support for enterprise
+    Linux (CentOS, Ubuntu, Debian, RHEL). Highly distributed, systems-heavy engineering
+    team.
+  pros:
+  - Cutting-edge work on rebootless live kernel and library patching
+  - 100% remote-first engineering culture with global teammates
+  - Critical security infrastructure trusted by thousands of enterprise fleets
+  cons:
+  - Kernel patching requires absolute precision (zero tolerance for kernel panics)
+  - Fast-moving CVE response cycles
+interview_process:
+  stages:
+  - '1. Recruiter Screen (30m): Background, systems experience, compensation expectations.'
+  - '2. Low-Level Systems & C/Go (60m): Linux memory models, ftrace, kprobes, ELF
+    symbols, syscalls.'
+  - '3. Live Patching & Vulnerability Review: Debugging kernel patches and memory
+    safety.'
+  - '4. Engineering Management Chat: Alignment on remote workflow and team dynamics.'

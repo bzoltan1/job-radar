@@ -1,0 +1,27 @@
+name: Sentry
+tier: Enterprise Infra / Observability
+glassdoor_rating: 4.3
+recommend_to_friend: 87%
+ceo_approval: 92%
+italy_legal_entity: Sentry Europe / EOR (Deel / Local Contract)
+contract_type: Permanent European Contract via EOR
+remote_policy: Remote-First in Europe & US
+emea_staff_comp_range: €105,000 - €160,000 + Stock Options
+culture_and_wlb:
+  summary: Open-source developer error tracking and telemetry leader. Core backend
+    handles billions of events daily, with high-performance native crash symbolication
+    written in Rust and Go.
+  pros:
+  - Open-source foundation with strong developer brand
+  - High-throughput distributed systems and data processing challenge
+  - Mature remote engineering organization in Europe
+  cons:
+  - Large event volume creates high-throughput on-call challenges
+  - Balancing SaaS product demands with open-source core maintenance
+interview_process:
+  stages:
+  - '1. Recruiter Screen (30m): Background, interests, and remote fit.'
+  - '2. Technical Coding Screen (60m): Practical coding in Rust, Python, or Go.'
+  - '3. Systems Architecture & Scalability (60m): High-throughput ingestion, symbolication,
+    Kafka streams.'
+  - '4. Values & Culture Interview: Pragmatism, engineering quality, collaboration.'
