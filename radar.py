@@ -133,6 +133,7 @@ def get_db():
             ("matched_skills", "TEXT DEFAULT ''"),
             ("pitch_bullets", "TEXT DEFAULT ''"),
             ("notified_at", "TIMESTAMP DEFAULT NULL"),
+            ("status", "TEXT DEFAULT 'new'"),
         ]:
             if col not in existing_cols:
                 conn.execute(f"ALTER TABLE jobs ADD COLUMN {col} {col_def}")
@@ -1108,6 +1109,105 @@ def cmd_stats(args):
         print(f"  - {r['company_id']:<16}: {r['cnt']} jobs (max match: {r['max_match']}%, salary listed: {r['sal_count']}, max score: {r['max_score']})")
 
 
+VALID_STATUSES = ("new", "reviewing", "applied", "interviewing", "offer", "rejected", "archived", "ignore")
+
+
+def find_obsidian_note(job_url, vault_path="~/sync/ObsidianNotes"):
+    jobs_dir = os.path.join(vault_path, "jobs")
+    archive_dir = os.path.join(jobs_dir, "archive")
+    for d in (jobs_dir, archive_dir):
+        if not os.path.exists(d):
+            continue
+        for f in os.listdir(d):
+            if f.endswith(".md"):
+                fp = os.path.join(d, f)
+                try:
+                    with open(fp, "r", encoding="utf-8") as fp_in:
+                        content = fp_in.read()
+                    if f'url: "{job_url}"' in content or f"url: '{job_url}'" in content:
+                        return fp, content
+                except Exception:
+                    pass
+    return None, None
+
+
+def update_note_status(file_path: str, content: str, new_status: str, vault_path="~/sync/ObsidianNotes"):
+    new_content = re.sub(
+        r'(^status:\s*)["\']?[a-zA-Z_-]+["\']?',
+        f'\\1"{new_status}"',
+        content,
+        flags=re.MULTILINE,
+    )
+    jobs_dir = os.path.join(vault_path, "jobs")
+    archive_dir = os.path.join(jobs_dir, "archive")
+    os.makedirs(archive_dir, exist_ok=True)
+
+    target_path = file_path
+    if new_status in ("archived", "ignore", "rejected"):
+        if os.path.dirname(file_path) == jobs_dir:
+            target_path = os.path.join(archive_dir, os.path.basename(file_path))
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
+    else:
+        if os.path.dirname(file_path) == archive_dir:
+            target_path = os.path.join(jobs_dir, os.path.basename(file_path))
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
+
+    with open(target_path, "w", encoding="utf-8") as f:
+        f.write(new_content)
+    return target_path
+
+
+def cmd_status(args):
+    conn = get_db()
+    job_id = args.job_id
+    row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    if not row:
+        row = conn.execute("SELECT * FROM jobs WHERE id LIKE ? OR title LIKE ? LIMIT 1", (f"%{job_id}%", f"%{job_id}%")).fetchone()
+
+    if not row:
+        print(f"[-] Job not found: '{job_id}'")
+        return
+
+    cur_status = row["status"] if "status" in row.keys() and row["status"] else "new"
+
+    if not args.new_status:
+        print(f"\n[{row['id']}] {row['title']} ({row['company_id'].capitalize()})")
+        print(f"  Current Status: {cur_status.upper()}")
+        print(f"  Score:          {row['score']}")
+        print(f"  URL:            {row['url']}")
+        note_fp, _ = find_obsidian_note(row["url"])
+        if note_fp:
+            print(f"  Obsidian Note:  {note_fp}")
+        return
+
+    new_st = args.new_status.lower()
+    if new_st not in VALID_STATUSES:
+        print(f"[-] Invalid status '{new_st}'. Must be one of: {', '.join(VALID_STATUSES)}")
+        return
+
+    with conn:
+        conn.execute("UPDATE jobs SET status = ? WHERE id = ?", (new_st, row["id"]))
+
+    note_fp, content = find_obsidian_note(row["url"])
+    note_msg = ""
+    if note_fp and content:
+        new_fp = update_note_status(note_fp, content, new_st)
+        note_msg = f" | Obsidian note updated: {os.path.basename(new_fp)}"
+
+    print(f"[+] [{row['id']}] Status updated: {cur_status.upper()} -> {new_st.upper()}{note_msg}")
+
+
+def cmd_apply(args):
+    args.new_status = "applied"
+    cmd_status(args)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Job Radar CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1129,6 +1229,13 @@ def main():
     p_rev.add_argument("--min-score", type=int, default=110, help="Minimum score (default: 110)")
     p_rev.add_argument("--limit", type=int, default=10, help="Limit number of roles (default: 10)")
 
+    p_status = sub.add_parser("status", help="View or update application status (new, reviewing, applied, etc.)")
+    p_status.add_argument("job_id", help="Job ID or title substring")
+    p_status.add_argument("new_status", nargs="?", default="", help=f"New status ({', '.join(VALID_STATUSES)})")
+
+    p_apply = sub.add_parser("apply", help="Mark a role as applied directly")
+    p_apply.add_argument("job_id", help="Job ID or title substring")
+
     p_comp = sub.add_parser("company", help="View company intelligence dossier (reviews, interview process, legal entity)")
     p_comp.add_argument("company_id", help="Company ID (e.g. cloudflare, sysdig, redhat, purestorage)")
 
@@ -1141,6 +1248,10 @@ def main():
         cmd_top(args)
     elif args.command == "review":
         cmd_review(args)
+    elif args.command == "status":
+        cmd_status(args)
+    elif args.command == "apply":
+        cmd_apply(args)
     elif args.command == "company":
         cmd_company(args)
     elif args.command == "stats":
