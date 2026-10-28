@@ -202,9 +202,9 @@ def update_frontmatter_for_archive(content: str, today_str: str) -> str:
     return f"---\n{chr(10).join(new_lines)}\n---\n" + body
 
 
-def prune_obsidian_jobs(vault_path: str, max_archive_days: int = 365):
+def prune_obsidian_jobs(vault_path: str, min_score: int = 70, max_archive_days: int = 365):
     """
-    1. Scan vault/jobs/ for roles that are no longer active in jobs.db:
+    1. Scan vault/jobs/ for roles that are no longer active in jobs.db or fell below min_score:
        Move them to vault/jobs/archive/ with status updated to 'archived' (or 'closed').
     2. Scan vault/jobs/archive/ for roles archived longer than max_archive_days (default 365):
        Permanently delete them.
@@ -217,7 +217,7 @@ def prune_obsidian_jobs(vault_path: str, max_archive_days: int = 365):
     os.makedirs(archive_dir, exist_ok=True)
 
     conn = sqlite3.connect(DB_PATH)
-    active_urls = set(r[0] for r in conn.execute("SELECT url FROM jobs WHERE active = 1"))
+    active_urls = set(r[0] for r in conn.execute("SELECT url FROM jobs WHERE active = 1 AND score >= ?", (min_score,)))
     conn.close()
 
     today = datetime.date.today()
@@ -402,7 +402,7 @@ tags:
     print(f"[+] Dashboard updated: {dashboard_path}")
 
     if prune:
-        prune_obsidian_jobs(vault_path, max_archive_days=max_archive_days)
+        prune_obsidian_jobs(vault_path, min_score=min_score, max_archive_days=max_archive_days)
 
 
 def write_dashboard(path: str, jobs, intel_data):
