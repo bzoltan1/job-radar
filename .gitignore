@@ -5,3 +5,10 @@ __pycache__/
 jobs.db
 feed.xml
 .DS_Store
+
+# Local secrets & user overrides
+.env
+*.local.yaml
+data/*.local.yaml
+config.yaml
+data/settings.yaml

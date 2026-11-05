@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=~/ws/job-radar
-ExecStart=~/ws/job-radar/run_radar_cron.sh
+WorkingDirectory=%h/ws/job-radar
+ExecStart=%h/ws/job-radar/run_radar_cron.sh
 StandardOutput=journal
 StandardError=journal

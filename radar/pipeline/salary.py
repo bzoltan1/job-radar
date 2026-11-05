@@ -4,6 +4,7 @@ import html
 import re
 from typing import Dict, Optional, Tuple
 
+from radar.config import get_salary_expectations
 from radar.models import Job, PipelineContext, RawJob, SalaryInfo
 from radar.pipeline.base import PipelineStage, StageResult
 
@@ -116,17 +117,22 @@ class SalaryStage(PipelineStage):
         tags = []
         norm = salary_info.norm_max_eur
 
-        if norm >= 150000:
+        tiers = get_salary_expectations()
+        high = tiers.get("high", 150000)
+        mid = tiers.get("mid", 120000)
+        low = tiers.get("low", 85000)
+
+        if norm >= high:
             score_delta += 35
-            tags.append(f"pay:{salary_info.display}(>150k)")
-        elif norm >= 120000:
+            tags.append(f"pay:{salary_info.display}(>{high // 1000}k)")
+        elif norm >= mid:
             score_delta += 25
-            tags.append(f"pay:{salary_info.display}(>120k)")
-        elif norm > 85000:
+            tags.append(f"pay:{salary_info.display}(>{mid // 1000}k)")
+        elif norm > low:
             score_delta += 15
-            tags.append(f"pay:{salary_info.display}(>85k)")
-        elif 0 < norm <= 85000:
+            tags.append(f"pay:{salary_info.display}(>{low // 1000}k)")
+        elif 0 < norm <= low:
             score_delta -= 10
-            tags.append(f"pay:{salary_info.display}(<=85k)")
+            tags.append(f"pay:{salary_info.display}(<={low // 1000}k)")
 
         return StageResult(should_continue=True, score_delta=score_delta, tags=tags)

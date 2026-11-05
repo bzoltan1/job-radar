@@ -1,131 +1,244 @@
 # Job Radar
 
-Automated job discovery, scraper, and scoring engine targeting Linux, Kernel, Systems, Observability, and Cloud Platform engineering roles for Italy residents.
+Automated job discovery, ATS scraping, and semantic scoring engine targeting Linux, Kernel, Systems, Observability, and Cloud Platform engineering roles.
 
-Prioritizes:
-- **Direct Italian Entity** (`S.r.l.` / `S.p.A.`) or **Employee of Record** (Deel, Remote.com, CXC) for full employee contract (`contratto a tempo indeterminato`).
-- Rejects / penalizes B2B contractor & freelance roles.
-- Big Tech & Enterprise Infrastructure leaders over early startups.
+**Key Highlights:**
+- **Zero HTML Scraping**: Queries public REST / GraphQL ATS endpoints directly (Greenhouse, Lever, Ashby, Workday, Deel, Recruitee, Workable, SmartRecruiters).
+- **Multi-Stage Scoring Pipeline**: Filters non-engineering roles, evaluates geographic eligibility & legal entity status, normalizes compensation, and scores candidate skill alignment.
+- **Custom Application Pitch Generator**: Dynamically crafts tailored CV & interview pitch bullets based on candidate profile.
+- **Multiple Output Sinks**: SQLite database, RSS 2.0 feed, Obsidian markdown vault (with Dataview dashboard), Telegram bot notifications, and desktop alerts.
 
 ---
 
-## 1. Fast CLI Usage
+## 🚀 Quickstart & Adoption Guide
 
-Sync jobs, extract salaries, and compute profile match:
+### 1. Prerequisites & Installation
+
+Clone the repository and set up a Python 3.10+ virtual environment:
+
 ```bash
-/usr/bin/python3 radar.py sync
+git clone https://github.com/your-username/job-radar.git
+cd job-radar
+
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-View roles sorted by **Profile Match %** to the candidate:
+### 2. Configure Environment (`.env`)
+
+Copy `.env.example` to `.env`:
+
 ```bash
-/usr/bin/python3 radar.py top --by-profile
-/usr/bin/python3 radar.py top --by-profile --min-match=80
+cp .env.example .env
 ```
 
-View highest-paying jobs first:
+Edit `.env` to configure your credentials, paths, and country:
+
 ```bash
-/usr/bin/python3 radar.py top --by-salary
-/usr/bin/python3 radar.py top --by-salary --min-salary=120000
+# --- Candidate Location & Eligibility ---
+# Primary country of residence (e.g. Italy, Germany, France, Spain, United Kingdom, Canada, US, etc.)
+CANDIDATE_COUNTRY="Italy"
+# Comma-separated secondary countries for direct employment or relocation
+CANDIDATE_ALLOWED_COUNTRIES="Austria"
+
+# --- Telegram Notifications (Optional) ---
+TELEGRAM_BOT_TOKEN="your_bot_token_from_botfather"
+TELEGRAM_CHAT_ID="your_telegram_chat_id"
+
+# Minimum score or salary to trigger a Telegram alert
+JOB_RADAR_NOTIFY_MIN_SCORE=85
+JOB_RADAR_NOTIFY_MIN_SALARY=100000
+
+# --- Obsidian Vault Export (Optional) ---
+OBSIDIAN_VAULT_PATH="~/vault/career"
+
+# --- Candidate Profile Overrides (Optional) ---
+# Path to custom profile YAML (defaults to data/profile.local.yaml, data/profile.yaml, or data/profile.example.yaml)
+# JOB_RADAR_PROFILE="data/profile.yaml"
 ```
 
-View detailed company intelligence dossier (reviews, interview stages, legal entity):
+### 3. Customize Candidate Profile (`data/profile.yaml`)
+
+Job Radar uses your career profile to calculate semantic match percentages and generate tailored application pitches.
+
+Copy the template:
 ```bash
-/usr/bin/python3 radar.py company cloudflare
-/usr/bin/python3 radar.py company sysdig
-/usr/bin/python3 radar.py company redhat
+cp data/profile.example.yaml data/profile.yaml
+```
+
+Edit `data/profile.yaml`:
+- **`candidate`**: Set your name, headline, current role, years of experience, and primary country.
+- **`compensation`**: Define target salary tiers (in EUR equivalent) for scoring boosts.
+- **`deep_domain_expertise`**: Define your core technical pillars.
+- **`scoring_weights`**: Customize keyword bonuses for titles and job descriptions.
+- **`skill_matrix`** (Optional): Add custom regex patterns and tailored pitch suggestions.
+
+> **Tip:** You can also save a private local override at `data/profile.local.yaml`, which is automatically recognized and ignored by git.
+
+### 4. Customize Target Companies (`data/targets.yaml`)
+
+`data/targets.yaml` defines the companies and ATS endpoints to track. Over 50 top tech companies (Cloudflare, Datadog, GitLab, Nebius, ElevenLabs, etc.) are pre-configured.
+
+To add a new company:
+```yaml
+companies:
+  - id: examplecorp
+    name: "Example Corp"
+    tier: scaleup
+    category: "Cloud Infrastructure"
+    ats: greenhouse         # greenhouse, lever, ashby, workday, deel, recruitee
+    board: examplecorp      # ATS board identifier
+    entity_in_italy: false  # Local legal entity presence
+    eor_supported: true     # Supports Employer of Record
+    notes: "Distributed systems, Go & Rust."
+```
+
+Or discover and add companies interactively via CLI:
+```bash
+python3 radar.py discover list
+python3 radar.py discover cncf "runtime"
+python3 radar.py discover add sysdig
+```
+
+---
+
+## 💻 CLI Usage
+
+### Sync & Run Pipeline
+Scrape all target companies, compute scores, and export to default sinks (db, rss, obsidian):
+```bash
+python3 radar.py sync
+```
+
+Sync with Telegram and Desktop alerts enabled:
+```bash
+python3 radar.py sync --notify
+```
+
+Sync only a single target company:
+```bash
+python3 radar.py sync --company cloudflare
+```
+
+### Explore Matched Roles
+View roles sorted by **Profile Match %**:
+```bash
+python3 radar.py top --by-profile
+python3 radar.py top --by-profile --min-match=75
+```
+
+View highest-paying positions:
+```bash
+python3 radar.py top --by-salary
+python3 radar.py top --by-salary --min-salary=120000
 ```
 
 Interactive review with tailored CV pitch bullets:
 ```bash
-/usr/bin/python3 radar.py review --limit=10
+python3 radar.py review --limit=10
 ```
 
-View database metrics & profile stats:
+Inspect company intelligence dossier:
 ```bash
-/usr/bin/python3 radar.py stats
+python3 radar.py company cloudflare
+```
+
+Update job tracking status (`new`, `reviewing`, `applied`, `interviewing`, `offer`, `rejected`, `archived`):
+```bash
+python3 radar.py status <job_id> applied
+```
+
+View database & scoring statistics:
+```bash
+python3 radar.py stats
 ```
 
 ---
 
-## 2. Profile Intelligence & Semantic Matcher (`profile.yaml`)
+## 📡 Sinks & Outputs
 
-Built from your CV and technical publications (`ws/ilmanzo.github.com` + `career_systems_plan.md`):
-- **Core Pillars**: many years Linux engineering, eBPF & runtime tracing, Go & C systems programming, <employer> QE automation / LTP / openQA, fleet management (thousands of servers), RPM packaging on OBS, RHCE/SLES certifications.
-- **Match Engine**: Evaluates every job description against your exact skills matrix, calculating a match percentage (0–100%).
-- **Custom Pitch Generator**: Produces 3 tailored application pitch points for each job (referencing your projects like `binary-coverage research`, openQA, and certs).
+### 1. SQLite Database (`jobs.db`)
+Central store for all tracked roles, historical states, and notification timestamps.
 
----
+### 2. RSS 2.0 Feed (`feed.xml`)
+Every `sync` generates a standard RSS feed at `feed.xml`. Subscribe using any feed reader (**newsboat**, Thunderbird, Feedly, NetNewsWire).
 
-## 3. Local RSS Feed (`feed.xml`)
+### 3. Obsidian Vault
+When configured, exports structured notes into your Obsidian vault:
+- **`jobs/offers/`**: One markdown file per role with YAML frontmatter, compensation breakdown, match percentage, and tailored pitch points. User edits in `## My Notes` or status changes are **strictly preserved** across runs.
+- **`jobs/companies/`**: Dossiers with Glassdoor ratings, remote policy, EMEA compensation benchmarks, and interview pipeline stages.
+- **`Job Radar Dashboard.md`**: Master dashboard with a Dataview pipeline table and static fallback tables.
 
-Each `sync` automatically updates `~/ws/job-radar/feed.xml`:
-- Open in any local RSS reader (**newsboat**, Thunderbird, Feedly, NetNewsWire).
-- Items include match score, salary, profile match %, and direct application link.
-
----
-
-## 2. Discovering Similar Companies (peer companies)
-
-List curated peer companies in enterprise systems, Linux, and cloud infrastructure:
-```bash
-/usr/bin/python3 discover.py list --italy-only
-```
-
-Search CNCF Landscape for companies by domain:
-```bash
-/usr/bin/python3 discover.py cncf "runtime"
-/usr/bin/python3 discover.py cncf "storage"
-/usr/bin/python3 discover.py cncf "ebpf"
-```
-
-Add a discovered company to active tracking:
-```bash
-/usr/bin/python3 discover.py add sysdig
-/usr/bin/python3 discover.py add arm
-```
+### 4. Telegram Alerts
+Dispatches HTML-formatted push alerts with clickable application links whenever a new role exceeds `JOB_RADAR_NOTIFY_MIN_SCORE` or `JOB_RADAR_NOTIFY_MIN_SALARY`.
 
 ---
 
-## 3. Supported ATS APIs (Zero HTML Scraping)
+## ⏰ Automated Scheduling (systemd User Timer)
 
-Target companies use public REST/GraphQL ATS APIs:
-- **Greenhouse**: `boards-api.greenhouse.io/v1/boards/{board}/jobs?content=true` (Canonical, Cloudflare, Datadog, Grafana Labs, Elastic, GitLab, Fastly)
-- **Lever**: `api.lever.co/v0/postings/{board}?mode=json` (Sysdig, Palantir)
-- **Ashby**: `jobs.ashbyhq.com/api/non-user-graphql` (Docker, Temporal)
-- **Workday**: `{tenant}.{subdomain}.myworkdayjobs.com/wday/cxs/...` (Red Hat, Intel)
+To run Job Radar automatically in the background on Linux:
+
+1. Copy the unit files to your systemd user directory:
+   ```bash
+   mkdir -p ~/.config/systemd/user/
+   cp systemd/job-radar.timer ~/.config/systemd/user/
+   cp systemd/job-radar.service.example ~/.config/systemd/user/job-radar.service
+   ```
+
+2. Adjust `WorkingDirectory` and `ExecStart` in `~/.config/systemd/user/job-radar.service` to match your checkout path.
+
+3. Enable and start the timer:
+   ```bash
+   systemctl --user daemon-reload
+   systemctl --user enable --now job-radar.timer
+   ```
+
+4. Check timer schedule and logs:
+   ```bash
+   systemctl --user list-timers job-radar.timer
+   journalctl --user -u job-radar.service -n 50
+   ```
 
 ---
 
-## 5. Obsidian Vault Integration & Pipeline Tracking
+## 🧩 Architecture
 
-Sync high-scoring jobs into Obsidian (`~/sync/ObsidianNotes/`):
-```bash
-/usr/bin/python3 obsidian_sync.py --min-score=95
+```
+[data/targets.yaml]
+        │
+        ▼
+┌─────────────────────────┐
+│   Source Plugins (ATS)  │ ◄── greenhouse, ashby, lever, workday, workable, etc.
+└───────────┬─────────────┘
+            │  list[RawJob]
+            ▼
+┌─────────────────────────┐
+│     Pipeline Stages     │
+│  1. TitleFilterStage    │ ◄── drops non-engineering / irrelevant roles
+│  2. LocationStage       │ ◄── candidate country, EMEA remote, non-EU filter
+│  3. ContractStage       │ ◄── penalizes/drops B2B contractor roles
+│  4. RoleSeniorityStage  │ ◄── systems/platform relevance & seniority boost
+│  5. SalaryStage         │ ◄── EUR normalization & compensation tiers
+│  6. ProfileMatchStage   │ ◄── semantic skill matrix match & tailored pitch
+│  7. FreshnessStage      │ ◄── age scoring decay
+└───────────┬─────────────┘
+            │  Job (scored & tagged)
+            ▼
+┌─────────────────────────┐
+│   Output Sink Plugins   │
+│  - DatabaseSink         │ ──► sqlite jobs.db
+│  - RssSink              │ ──► feed.xml (RSS 2.0)
+│  - ObsidianSink         │ ──► Vault notes, Kanban, Dataview dashboard
+│  - TelegramSink         │ ──► Bot notifications for new top matches
+│  - DesktopSink          │ ──► notify-send alerts
+└─────────────────────────┘
 ```
 
-- **Dashboard**: Generates `Job Radar Dashboard.md` in vault with Dataview & static markdown tables.
-- **Job Notes**: Creates individual notes under `jobs/` with YAML properties (`company`, `salary`, `score`, `status: new`, `url`).
-- **Notes Preservation**: Editing `## My Notes` or changing `status` to `applied`/`interviewing` inside Obsidian is **strictly preserved** on subsequent syncs.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for details on writing custom ATS plugins and pipeline stages.
 
 ---
 
-## 6. Automated Scheduling (systemd user timer)
+## 📄 License
 
-Managed via systemd user units:
-- Unit files: `systemd/job-radar.service` and `systemd/job-radar.timer` (installed to `~/.config/systemd/user/`)
-- Schedule: Twice daily at **01:04 AM** and **01:04 PM** (`Persistent=true`).
-
-Check timer status:
-```bash
-systemctl --user list-timers job-radar.timer
-```
-
-View execution logs:
-```bash
-journalctl --user -u job-radar.service -n 50
-```
-
-Trigger immediate manual run:
-```bash
-systemctl --user start job-radar.service
-```
+MIT

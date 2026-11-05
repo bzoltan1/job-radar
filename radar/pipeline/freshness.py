@@ -1,6 +1,8 @@
 """Posting age & staleness decay scoring stage."""
 
 import datetime
+from typing import Optional
+
 from radar.models import Job, PipelineContext, RawJob
 from radar.pipeline.base import PipelineStage, StageResult
 
@@ -14,16 +16,23 @@ class FreshnessStage(PipelineStage):
 
     def process(self, raw_job: RawJob, job: Job, context: PipelineContext) -> StageResult:
         eff_date = raw_job.posted_date or context.first_seen
-        age_days = 0
+        age_days: Optional[int] = None
 
         if eff_date:
             try:
-                clean_date = str(eff_date).split(".")[0]
-                dt = datetime.datetime.strptime(clean_date, "%Y-%m-%d %H:%M:%S")
+                clean_date = str(eff_date).split(".")[0].strip()
+                if " " in clean_date:
+                    dt = datetime.datetime.strptime(clean_date, "%Y-%m-%d %H:%M:%S")
+                else:
+                    dt = datetime.datetime.strptime(clean_date, "%Y-%m-%d")
                 now_utc = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 age_days = max(0, (now_utc - dt).days)
             except Exception:
-                age_days = 0
+                age_days = None
+
+        if age_days is None:
+            # Neutral baseline when posting date cannot be verified
+            return StageResult(should_continue=True, score_delta=0, tags=[])
 
         score_delta = 0
         tags = []

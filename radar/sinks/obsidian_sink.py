@@ -6,11 +6,14 @@ import re
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 
-from radar.config import load_all_intel
+from radar.config import (
+    get_candidate_info,
+    get_location_config,
+    get_obsidian_vault_path,
+    load_all_intel,
+)
 from radar.models import Job
 from radar.sinks.base import BaseSink
-
-DEFAULT_VAULT_PATH = os.path.expanduser("~/vault/career")
 
 
 def sanitize_filename(name: str) -> str:
@@ -70,6 +73,11 @@ def update_frontmatter_for_archive(content: str, today_str: str) -> str:
 def export_company_dossiers(vault_path: str, intel_data: dict, jobs: List[Job]):
     comp_dir = os.path.join(vault_path, "jobs", "companies")
     os.makedirs(comp_dir, exist_ok=True)
+    cand_info = get_candidate_info()
+    cand_name = cand_info.get("name", "Candidate")
+    loc_cfg = get_location_config()
+    country_name = loc_cfg.get("primary_country", "Italy").capitalize()
+    country_slug = country_name.lower()
 
     for cid, info in intel_data.items():
         comp_name = info.get("name", cid.capitalize())
@@ -89,13 +97,23 @@ def export_company_dossiers(vault_path: str, intel_data: dict, jobs: List[Job]):
         pros_md = "\n".join(f"  + {p}" for p in (info.get("culture_and_wlb", {}).get("pros") or []))
         cons_md = "\n".join(f"  - {c}" for c in (info.get("culture_and_wlb", {}).get("cons") or []))
 
+        interview_tips = (
+            info.get("interview_process", {}).get("insider_tips")
+            or info.get("interview_process", {}).get("candidate_tips")
+            or info.get("interview_process", {}).get("interview_tips")
+            or ""
+        )
+
+        entity_val = info.get(f"{country_slug}_legal_entity") or info.get("italy_legal_entity", "N/A")
+
         content = f"""---
 title: "{comp_name}"
 tier: "{info.get('tier', 'Unknown')}"
 glassdoor_rating: {info.get('glassdoor_rating', 0.0)}
 recommend_rate: "{info.get('recommend_to_friend', 'N/A')}"
 ceo_approval: "{info.get('ceo_approval', 'N/A')}"
-italy_legal_entity: "{info.get('italy_legal_entity', 'N/A')}"
+{country_slug}_legal_entity: "{entity_val}"
+italy_legal_entity: "{entity_val}"
 contract_type: "{info.get('contract_type', 'N/A')}"
 remote_policy: "{info.get('remote_policy', 'N/A')}"
 emea_staff_comp: "{info.get('emea_staff_comp_range', 'N/A')}"
@@ -108,7 +126,7 @@ tags:
 
 - **Tier**: `{info.get('tier', 'Unknown')}`
 - **Glassdoor**: **{info.get('glassdoor_rating', 'N/A')}/5.0** (Recommend: {info.get('recommend_to_friend', 'N/A')}, CEO Approval: {info.get('ceo_approval', 'N/A')})
-- **Italian Legal Entity**: `{info.get('italy_legal_entity', 'N/A')}` ({info.get('contract_type', 'N/A')})
+- **{country_name} Legal Entity**: `{entity_val}` ({info.get('contract_type', 'N/A')})
 - **Remote Policy**: `{info.get('remote_policy', 'N/A')}`
 - **EMEA Staff Comp Benchmark**: **{info.get('emea_staff_comp_range', 'N/A')}**
 
@@ -130,8 +148,8 @@ tags:
 
 ---
 
-## 💡 Tailored Preparation for Candidate
-> {info.get('interview_process', {}).get('insider_tips', '')}
+## 💡 Tailored Preparation for {cand_name}
+> {interview_tips}
 
 ---
 
@@ -143,6 +161,12 @@ tags:
 
 
 def write_dashboard(path: str, jobs: List[Job], intel_data: dict):
+    cand_info = get_candidate_info()
+    cand_name = cand_info.get("name", "Candidate")
+    loc_cfg = get_location_config()
+    country_name = loc_cfg.get("primary_country", "Italy").capitalize()
+    country_slug = country_name.lower()
+
     content = f"""---
 title: "Job Radar Dashboard"
 date_updated: "{datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}"
@@ -151,7 +175,7 @@ tags:
   - job-radar
 ---
 
-# 🎯 Job Radar: Active Pipeline & Opportunities (Candidate)
+# 🎯 Job Radar: Active Pipeline & Opportunities ({cand_name})
 
 > Updated: `{datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}` | Tracked High-Match Jobs: **{len(jobs)}**
 
@@ -162,7 +186,7 @@ tags:
     for cid, c_info in intel_data.items():
         name = c_info.get("name", cid.capitalize())
         rating = c_info.get("glassdoor_rating", "N/A")
-        entity = c_info.get("italy_legal_entity", "N/A")
+        entity = c_info.get(f"{country_slug}_legal_entity") or c_info.get("italy_legal_entity", "N/A")
         comp = c_info.get("emea_staff_comp_range", "N/A")
         content += f"- [[{name}]] — `{rating}⭐` | Entity: `{entity}` | Staff Range: `{comp}`\n"
 
@@ -200,7 +224,7 @@ class ObsidianSink(BaseSink):
     name = "obsidian"
 
     def export(self, jobs: List[Job], context: Dict[str, Any]):
-        vault_path = context.get("vault_path") or DEFAULT_VAULT_PATH
+        vault_path = context.get("vault_path") or get_obsidian_vault_path()
         if not os.path.exists(vault_path):
             try:
                 os.makedirs(vault_path, exist_ok=True)
@@ -216,6 +240,14 @@ class ObsidianSink(BaseSink):
 
         intel_data = load_all_intel()
         export_company_dossiers(vault_path, intel_data, jobs)
+
+        cand_info = get_candidate_info()
+        cand_name = cand_info.get("name", "Candidate")
+        cand_headline = cand_info.get("headline", "Systems Engineering")
+
+        loc_cfg = get_location_config()
+        country_name = loc_cfg.get("primary_country", "Italy").capitalize()
+        country_slug = country_name.lower()
 
         exported_count = 0
         updated_count = 0
@@ -245,12 +277,24 @@ class ObsidianSink(BaseSink):
             salary_disp = j.salary.display if j.salary.display else "Not disclosed"
             eur_est = f"€{j.salary.norm_max_eur:,}" if j.salary.norm_max_eur > 0 else "N/A"
             tags_str = ";".join(j.tags)
-            it_entity = c_info.get("italy_legal_entity") or ("YES" if j.is_italy_direct or ("legal:it_entity" in tags_str) else "NO")
+
+            is_direct_local = getattr(j, "is_local_direct", False) or j.is_italy_direct
+            has_legal_entity = "legal:local_entity" in tags_str or "legal:it_entity" in tags_str or (f"legal:{country_slug[:2]}_entity" in tags_str)
+            local_entity = (
+                c_info.get(f"{country_slug}_legal_entity")
+                or c_info.get("italy_legal_entity")
+                or ("YES" if (is_direct_local or has_legal_entity) else "NO")
+            )
+
             match_pct = j.profile.match_pct
             matched_skills = ", ".join(j.profile.matched_skills)
             rating_str = f"{c_info.get('glassdoor_rating', 'N/A')}/5.0" if c_info else "N/A"
 
-            pitch_md = "\n".join(f"- {p}" for p in j.profile.pitch_bullets) if j.profile.pitch_bullets else "- Emphasize many years Linux engineering experience."
+            pitch_md = (
+                "\n".join(f"- {p}" for p in j.profile.pitch_bullets)
+                if j.profile.pitch_bullets
+                else f"- Highlight relevant experience in {cand_headline}."
+            )
 
             note_content = f"""---
 title: "{title}"
@@ -261,8 +305,10 @@ profile_match_pct: {match_pct}
 salary: "{salary_disp}"
 salary_norm_eur: {j.salary.norm_max_eur}
 location: "{j.location}"
+local_direct: {bool(is_direct_local)}
 italy_direct: {bool(j.is_italy_direct)}
-italy_entity: "{it_entity}"
+local_entity: "{local_entity}"
+italy_entity: "{local_entity}"
 status: "{status}"
 url: "{j.url}"
 date_updated: "{datetime.date.today().isoformat()}"
@@ -279,12 +325,12 @@ tags:
 - **Location**: `{j.location}`
 - **Compensation**: **{salary_disp}** (est. EUR: {eur_est})
 - **Profile Alignment**: **{match_pct}%** (`{matched_skills}`)
-- **Legal Entity (Italy)**: `{it_entity}`
+- **Legal Entity ({country_name})**: `{local_entity}`
 - **Application Link**: [Open Job Posting]({j.url})
 
 ---
 
-## 🎯 Tailored Application Pitch (Candidate)
+## 🎯 Tailored Application Pitch ({cand_name})
 {pitch_md}
 
 ---

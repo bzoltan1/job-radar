@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-"""Deep analysis of latest 48 posts across the candidate's blog."""
+"""Analysis of Markdown blog posts to extract domain pillars and keywords for profile.yaml."""
 
 import glob
 import os
 import re
+import sys
 from collections import Counter
 
-POSTS_DIR = "~/blog/content/posts"
+POSTS_DIR = os.environ.get("BLOG_POSTS_DIR") or (sys.argv[1] if len(sys.argv) > 1 else "")
+if not POSTS_DIR or not os.path.isdir(POSTS_DIR):
+    print("Usage: python3 analyze_blog.py <path_to_markdown_posts_dir>")
+    print("Or set BLOG_POSTS_DIR environment variable.")
+    sys.exit(0 if not POSTS_DIR else 1)
 files = glob.glob(os.path.join(POSTS_DIR, "*.md"))
 posts = []
 
@@ -62,7 +67,7 @@ for idx, p in enumerate(latest_48, 1):
     text = (title + " " + p["content"]).lower()
     
     assigned = []
-    if any(k in text for k in ["ebpf", "pintool", "ftrace", "binary coverage", "coverage", "dlopen"]):
+    if any(k in text for k in ["ebpf", "pintool", "ftrace", "binary_coverage", "coverage", "dlopen"]):
         clusters["eBPF, Tracing & Binary Coverage"].append(title)
         assigned.append("Tracing/eBPF")
     if any(k in text for k in ["landlock", "capabilities", "kernel", "linux test project", "ltp", "segfault", "kexec", "instant reboot"]):

@@ -31,7 +31,7 @@ PEER_CATALOG = [
         "sub_domain": "wd5",
         "entity_in_italy": True,
         "eor_supported": True,
-        "notes": "Red Hat Italy S.r.l. Primary <employer> peer. Enterprise Linux, OpenShift, Kernel.",
+        "notes": "Red Hat Italy S.r.l. Enterprise Linux, OpenShift, Kernel & Systems.",
     },
     {
         "id": "intel",

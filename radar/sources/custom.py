@@ -5,23 +5,44 @@ import json
 import re
 import sys
 import urllib.request
-from typing import List
+from typing import Dict, List
 
+from radar.config import get_location_config
 from radar.models import CompanyTarget, RawJob
 from radar.sources.base import BaseSource, parse_job_date
+
+AMAZON_COUNTRY_CODES: Dict[str, str] = {
+    "italy": "ITA",
+    "germany": "DEU",
+    "france": "FRA",
+    "spain": "ESP",
+    "united kingdom": "GBR",
+    "uk": "GBR",
+    "austria": "AUT",
+    "ireland": "IRL",
+    "poland": "POL",
+    "netherlands": "NLD",
+    "canada": "CAN",
+    "united states": "USA",
+    "us": "USA",
+}
 
 
 class AmazonSource(BaseSource):
     ats_name = "amazon"
 
     def fetch(self, target: CompanyTarget) -> List[RawJob]:
+        loc_cfg = get_location_config()
+        primary_country = loc_cfg.get("primary_country", "Italy").lower()
+        country_code = AMAZON_COUNTRY_CODES.get(primary_country, "ITA")
+
         queries = [
             "https://www.amazon.jobs/en/search.json?base_query=bottlerocket&result_limit=50",
             "https://www.amazon.jobs/en/search.json?base_query=amazon+linux&result_limit=50",
             "https://www.amazon.jobs/en/search.json?base_query=firecracker&result_limit=50",
-            "https://www.amazon.jobs/en/search.json?country=ITA&category[]=software-development&result_limit=50",
-            "https://www.amazon.jobs/en/search.json?country=ITA&base_query=linux&result_limit=50",
-            "https://www.amazon.jobs/en/search.json?country=ITA&base_query=systems&result_limit=50",
+            f"https://www.amazon.jobs/en/search.json?country={country_code}&category[]=software-development&result_limit=50",
+            f"https://www.amazon.jobs/en/search.json?country={country_code}&base_query=linux&result_limit=50",
+            f"https://www.amazon.jobs/en/search.json?country={country_code}&base_query=systems&result_limit=50",
             "https://www.amazon.jobs/en/search.json?base_query=linux+kernel&result_limit=50",
         ]
         headers = {"User-Agent": "JobRadar/2.0"}
@@ -41,8 +62,8 @@ class AmazonSource(BaseSource):
                         loc = item.get("location", "")
                         norm_loc = item.get("normalized_location", "")
                         country = item.get("country_code", "")
-                        if country == "ITA" or "italy" in norm_loc.lower():
-                            full_loc = f"{loc}, Italy"
+                        if country == country_code or primary_country in norm_loc.lower():
+                            full_loc = f"{loc}, {primary_country.capitalize()}"
                         else:
                             full_loc = f"{loc} ({norm_loc})" if norm_loc and norm_loc != loc else loc
 

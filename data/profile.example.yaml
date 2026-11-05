@@ -1,0 +1,88 @@
+# Example Candidate Profile for Job Radar
+# Copy this file to data/profile.yaml and customize with your background, skills, and preferences.
+
+candidate:
+  name: "Jane Doe"
+  headline: "Staff Systems / Linux Platform Engineer — Observability, Kernel/Userland Plumbing & Runtime Testing"
+  current_role: "Senior Infrastructure Engineer"
+  experience_years: 15
+  # Primary country of residence (e.g. Italy, Germany, France, United Kingdom, Spain, Canada, etc.)
+  location: "Germany"
+  # Optional list of secondary countries eligible for direct employment or relocation
+  allowed_locations:
+    - "Austria"
+    - "Switzerland"
+  contract_preference: "Employee contract (direct entity or EOR; no freelance/B2B)"
+  website: "https://example.com"
+
+# Target compensation tiers (in EUR equivalent) used for salary scoring & notification alerts
+compensation:
+  currency: "EUR"
+  target_high: 150000    # Top tier compensation bonus (+35 score) and notification bypass
+  target_mid: 120000     # Mid tier compensation bonus (+25 score)
+  target_low: 85000      # Baseline acceptable compensation (+15 score)
+
+# High-level domain pillars used for context & profile matching
+deep_domain_expertise:
+  - category: "eBPF & Dynamic Binary Instrumentation"
+    description: "Runtime test coverage and observability using eBPF uprobes/uretprobes, dynamic binary instrumentation, and kernel ftrace."
+    keywords: ["ebpf", "bpf", "uprobe", "uretprobe", "pintool", "ftrace", "dlopen", "elf"]
+
+  - category: "Linux Kernel Security, Sandboxing & Capabilities"
+    description: "Linux kernel sandboxing: Landlock LSM, Linux Capabilities, and seccomp syscall filtering."
+    keywords: ["landlock", "capabilities", "seccomp", "syscall", "sandboxing", "gdb"]
+
+  - category: "OS Reliability, Kernel Testing & Fault Injection"
+    description: "Operating system qualification, Linux Test Project (LTP), network namespace fault injection with tc/netem."
+    keywords: ["ltp", "linux test project", "kexec", "netns", "tc", "netem", "dm-flakey", "fault injection"]
+
+  - category: "Container Runtimes & systemd Plumbing"
+    description: "Container daemonization with Podman Quadlets, rootless containers, and systemd socket activation."
+    keywords: ["quadlets", "podman", "rootless", "systemd", "socket activation", "cgroups", "namespaces"]
+
+  - category: "Core Systems Programming & Languages"
+    description: "Concurrent systems programming in Go, C/C++, Rust, and low-level Linux IPC."
+    keywords: ["golang", "go", "c", "c++", "rust", "d-bus", "dbus", "rpm"]
+
+# Scoring weights applied to keywords found in job titles and descriptions
+scoring_weights:
+  title_keywords:
+    linux: 30
+    systems: 30
+    kernel: 35
+    ebpf: 35
+    platform: 25
+    runtime: 25
+    observability: 25
+    infrastructure: 20
+    storage: 20
+    virtualization: 25
+    sre: 25
+    devops: 20
+  body_keywords:
+    ebpf: 25
+    kernel: 20
+    uprobe: 20
+    ftrace: 15
+    linux: 15
+    systemd: 15
+    c: 15
+    golang: 15
+    go: 15
+    landlock: 20
+    containers: 15
+    podman: 15
+    qemu: 15
+    ltp: 20
+    packaging: 15
+    kubernetes: 15
+    sre: 20
+    devops: 15
+
+# Optional custom skill matrix for the semantic matcher & tailored pitch generator.
+# If omitted or empty, Job Radar uses its standard built-in systems engineering matrix.
+# skill_matrix:
+#   - pattern: "\\bebpf\\b|\\bbpf\\b|\\buprobe\\b|\\bftrace\\b"
+#     name: "eBPF & Kernel Tracing"
+#     weight: 30
+#     pitch: "Highlight extensive background in non-intrusive eBPF runtime observability and tracing."

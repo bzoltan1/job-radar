@@ -1,18 +1,40 @@
 """Location evaluation & geographic scoring stage."""
 
 import re
+from typing import Dict, List, Set, Tuple
+
+from radar.config import get_location_config
 from radar.models import Job, PipelineContext, RawJob
 from radar.pipeline.base import PipelineStage, StageResult
 
-LOCATION_ITALY_RE = re.compile(
-    r"\b(italy|italia|milan|milano|rome|roma)\b",
-    re.IGNORECASE,
-)
-
-LOCATION_AUSTRIA_RE = re.compile(
-    r"\b(austria|vienna|wien|linz|graz)\b",
-    re.IGNORECASE,
-)
+COUNTRY_SYNONYMS = {
+    "italy": ("italy", "italia", "milan", "milano", "rome", "roma", "turin", "torino", "bologna", "naples", "napoli"),
+    "austria": ("austria", "vienna", "wien", "linz", "graz", "salzburg", "innsbruck"),
+    "germany": ("germany", "munich", "münchen", "berlin", "frankfurt", "deutschland", "hamburg", "cologne", "köln", "stuttgart"),
+    "france": ("france", "paris", "nantes", "grenoble", "montpellier", "lyon", "bordeaux", "toulouse"),
+    "uk": ("united kingdom", "uk", "london", "england", "scotland", "wales", "edinburgh", "manchester"),
+    "united kingdom": ("united kingdom", "uk", "london", "england", "scotland", "wales", "edinburgh", "manchester"),
+    "netherlands": ("netherlands", "amsterdam", "holland", "rotterdam", "utrecht", "eindhoven"),
+    "spain": ("spain", "madrid", "barcelona", "valencia", "seville", "españa"),
+    "ireland": ("ireland", "dublin", "cork", "galway"),
+    "poland": ("poland", "warsaw", "krakow", "wrocław", "polska", "gdansk"),
+    "sweden": ("sweden", "stockholm", "gothenburg", "malmö"),
+    "switzerland": ("switzerland", "zurich", "geneva", "basel", "bern", "schweiz", "suisse"),
+    "portugal": ("portugal", "lisbon", "porto"),
+    "belgium": ("belgium", "brussels", "antwerp", "ghent"),
+    "czech": ("czech", "prague", "czechia", "brno"),
+    "denmark": ("denmark", "copenhagen", "aarhus"),
+    "norway": ("norway", "oslo", "bergen"),
+    "finland": ("finland", "helsinki", "espoo"),
+    "romania": ("romania", "bucharest", "cluj"),
+    "greece": ("greece", "athens", "thessaloniki"),
+    "canada": ("canada", "toronto", "vancouver", "montreal", "ottawa"),
+    "australia": ("australia", "sydney", "melbourne", "brisbane"),
+    "brazil": ("brazil", "brasil", "sao paulo", "rio de janeiro"),
+    "india": ("india", "bengaluru", "bangalore", "delhi", "mumbai", "hyderabad", "pune"),
+    "us": ("united states", "usa", "us", "new york", "california", "san francisco", "austin", "texas", "seattle"),
+    "united states": ("united states", "usa", "us", "new york", "california", "san francisco", "austin", "texas", "seattle"),
+}
 
 LOCATION_EMEA_REMOTE_RE = re.compile(
     r"\b(emea|europe|worldwide|anywhere|global)\b",
@@ -26,36 +48,29 @@ NON_EU_DISQUALIFY_RE = re.compile(
     re.IGNORECASE,
 )
 
-EU_COUNTRY_MAP = {
-    "uk": ("united kingdom", "uk", "london", "england", "scotland"),
-    "germany": ("germany", "munich", "berlin", "frankfurt", "deutschland"),
-    "france": ("france", "paris", "nantes", "grenoble", "montpellier"),
-    "netherlands": ("netherlands", "amsterdam", "holland"),
-    "spain": ("spain", "madrid", "barcelona"),
-    "italy": ("italy", "italia", "milan", "milano", "rome", "roma"),
-    "ireland": ("ireland", "dublin"),
-    "poland": ("poland", "warsaw"),
-    "austria": ("austria", "vienna", "wien", "linz", "graz"),
-    "sweden": ("sweden", "stockholm"),
-    "switzerland": ("switzerland", "zurich", "geneva"),
-    "portugal": ("portugal", "lisbon"),
-    "belgium": ("belgium", "brussels"),
-    "czech": ("czech", "prague", "czechia"),
-    "denmark": ("denmark", "copenhagen"),
-    "norway": ("norway", "oslo"),
-    "finland": ("finland", "helsinki"),
-    "romania": ("romania", "bucharest"),
-    "greece": ("greece", "athens"),
-}
+_REGEX_CACHE: Dict[str, re.Pattern] = {}
 
 
-def get_eu_countries(text: str) -> set:
-    text_lower = text.lower()
-    return {c for c, syns in EU_COUNTRY_MAP.items() if any(s in text_lower for s in syns)}
+def get_country_regex(country_name: str) -> re.Pattern:
+    key = country_name.lower().strip()
+    if key not in _REGEX_CACHE:
+        syns = COUNTRY_SYNONYMS.get(key, (key,))
+        pattern = r"\b(" + "|".join(re.escape(s) for s in syns) + r")\b"
+        _REGEX_CACHE[key] = re.compile(pattern, re.IGNORECASE)
+    return _REGEX_CACHE[key]
+
+
+def get_eu_countries(text: str) -> Set[str]:
+    found = set()
+    for c in COUNTRY_SYNONYMS:
+        rx = get_country_regex(c)
+        if rx.search(text):
+            found.add(c)
+    return found
 
 
 class LocationStage(PipelineStage):
-    """Categorizes geographic eligibility and computes location score delta."""
+    """Categorizes geographic eligibility and computes location score delta based on configured candidate countries."""
 
     @property
     def name(self) -> str:
@@ -66,20 +81,38 @@ class LocationStage(PipelineStage):
         location = raw_job.location
         company = context.target
 
-        is_direct_italy = bool(LOCATION_ITALY_RE.search(location)) or bool(LOCATION_ITALY_RE.search(title))
-        is_austria = (bool(LOCATION_AUSTRIA_RE.search(location)) or bool(LOCATION_AUSTRIA_RE.search(title))) if company.allow_austria else False
+        loc_cfg = get_location_config()
+        primary_country = loc_cfg.get("primary_country", "Italy").lower()
+        allowed_countries = [c.lower() for c in loc_cfg.get("allowed_countries", ["Austria"])]
 
-        # Hybrid / On-site check
+        primary_re = get_country_regex(primary_country)
+        is_direct_primary = bool(primary_re.search(location)) or bool(primary_re.search(title))
+
+        is_direct_allowed = False
+        for ac in allowed_countries:
+            ac_re = get_country_regex(ac)
+            if ac_re.search(location) or ac_re.search(title):
+                if ac == "austria" and not (company.allow_austria or "austria" in allowed_countries):
+                    continue
+                is_direct_allowed = True
+                break
+
+        if not is_direct_allowed and company.allow_austria:
+            austria_re = get_country_regex("austria")
+            if austria_re.search(location) or austria_re.search(title):
+                is_direct_allowed = True
+
+        # Hybrid / On-site check: must match primary or allowed country directly
         is_hybrid = bool(re.search(r"\bhybrid\b", location, re.IGNORECASE))
         is_onsite = bool(re.search(r"\b(in-office|on-?site)\b", location, re.IGNORECASE))
-        if (is_hybrid or is_onsite) and not (is_direct_italy or is_austria):
+        if (is_hybrid or is_onsite) and not (is_direct_primary or is_direct_allowed):
             return StageResult(should_continue=False)
 
-        # Disqualify non-EU positions
+        # Disqualify non-EU positions (unless candidate is in that country or job is EMEA/global)
         is_non_eu = bool(NON_EU_DISQUALIFY_RE.search(location)) or bool(re.search(r"(?:\|\s*|\(\s*|\b-\s*|\b—\s*)(us\b|usa\b|united states|canada|india|australia|singapore|japan|apac|americas|amer\b|latam)(?:\s*\||\s*\)|\s*-|\s*—|\s*$)", title, re.IGNORECASE))
         title_non_eu = bool(re.search(r"\b(amer\b|americas|apac|latam|us\b|usa\b)\b", title, re.IGNORECASE))
         has_global_or_emea = (bool(LOCATION_EMEA_REMOTE_RE.search(location)) or bool(re.search(r"\b(emea|europe)\b", title, re.IGNORECASE))) and not title_non_eu
-        if is_non_eu and not (is_direct_italy or is_austria or has_global_or_emea):
+        if is_non_eu and not (is_direct_primary or is_direct_allowed or has_global_or_emea):
             return StageResult(should_continue=False)
 
         # Check remote indicators
@@ -87,40 +120,48 @@ class LocationStage(PipelineStage):
         is_loc_geo = bool(LOCATION_EMEA_REMOTE_RE.search(location)) or (location.strip().lower() in ("remote", "distributed"))
         is_remote_keyword = bool(re.search(r"\b(remote|distributed|telecommute|work from home)\b", f"{title} {location}", re.IGNORECASE))
 
-        if not (is_direct_italy or is_austria or is_title_geo or is_loc_geo or is_remote_keyword):
+        if not (is_direct_primary or is_direct_allowed or is_title_geo or is_loc_geo or is_remote_keyword):
             return StageResult(should_continue=False)
 
-        eu_found = get_eu_countries(f"{title} {location}")
-        foreign_eu = eu_found - {"italy", "austria"} if company.allow_austria else eu_found - {"italy"}
+        # Detect single-country foreign lock
+        detected_countries = get_eu_countries(f"{title} {location}")
+        accepted_countries = {primary_country} | set(allowed_countries)
+        foreign_restrictions = detected_countries - accepted_countries
 
-        is_eu_no_italy = False
+        is_foreign_single_country = False
         is_emea_remote = False
 
-        if is_direct_italy or is_austria:
+        if is_direct_primary or is_direct_allowed:
             pass
-        elif len(foreign_eu) > 0 and (is_remote_keyword or is_loc_geo or is_title_geo):
-            is_eu_no_italy = True
+        elif len(foreign_restrictions) > 0 and (is_remote_keyword or is_loc_geo or is_title_geo):
+            is_foreign_single_country = True
         elif is_title_geo or is_loc_geo:
             is_emea_remote = True
         else:
             return StageResult(should_continue=False)
 
-        # Set job flags
-        job.is_italy_direct = is_direct_italy
-        job.is_emea_remote = is_emea_remote or is_austria or is_eu_no_italy
+        # Update Job flags
+        job.is_local_direct = is_direct_primary
+        job.is_italy_direct = is_direct_primary if primary_country == "italy" else False
+        job.is_emea_remote = is_emea_remote or is_direct_allowed or is_foreign_single_country
 
-        # Score delta & tags
+        # Compute score delta & tags
         score_delta = 0
         tags = []
 
-        if is_direct_italy:
+        if is_direct_primary:
             score_delta += 25
-            tags.append("loc:italy_direct")
-        elif is_austria:
+            tags.append(f"loc:{primary_country[:2]}_direct")
+            tags.append("loc:direct_country")
+            if primary_country == "italy":
+                tags.append("loc:italy_direct")
+        elif is_direct_allowed:
             score_delta += 15
+            tags.append("loc:allowed_country")
             tags.append("loc:austria")
-        elif is_eu_no_italy:
+        elif is_foreign_single_country:
             score_delta -= 40
+            tags.append("loc:foreign_restriction(-40)")
             tags.append("loc:eu_no_italy(-40)")
         elif is_emea_remote:
             score_delta += 10

@@ -4,7 +4,7 @@ import datetime
 from typing import Any, Dict, List
 import xml.etree.ElementTree as ET
 
-from radar.config import FEED_PATH
+from radar.config import FEED_PATH, get_candidate_info
 from radar.models import Job
 from radar.sinks.base import BaseSink
 
@@ -17,14 +17,19 @@ class RssSink(BaseSink):
         rss = ET.Element("rss", version="2.0")
         channel = ET.SubElement(rss, "channel")
 
+        cand_info = get_candidate_info()
+        cand_name = cand_info.get("name", "Candidate")
+        cand_headline = cand_info.get("headline", "Systems & Platform Engineering")
+        cand_site = cand_info.get("website", "")
+
         title = ET.SubElement(channel, "title")
-        title.text = "Candidate — Systems & Platform Engineering Radar"
+        title.text = f"{cand_name} — {cand_headline} Radar"
 
         link = ET.SubElement(channel, "link")
-        link.text = "https://example.com"
+        link.text = cand_site if cand_site else "https://github.com/job-radar"
 
         desc = ET.SubElement(channel, "description")
-        desc.text = "Top curated Linux, Platform, and Systems engineering opportunities matching the candidate's profile."
+        desc.text = f"Top curated opportunities matching {cand_name}'s profile."
 
         last_build = ET.SubElement(channel, "lastBuildDate")
         now_str = datetime.datetime.now(datetime.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")

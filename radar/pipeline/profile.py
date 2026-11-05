@@ -1,121 +1,147 @@
-"""Candidate profile & blog domain matching stage."""
+"""Candidate profile & domain matching stage."""
 
 import re
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
+from radar.config import get_candidate_info, load_profile
 from radar.models import Job, PipelineContext, ProfileMatch, RawJob
 from radar.pipeline.base import PipelineStage, StageResult
 
-SKILL_MATRIX = [
+DEFAULT_SKILL_MATRIX = [
     # 1. eBPF & Dynamic Instrumentation
     (
         r"\bebpf\b|\bbpf\b|\buprobe\b|\bftrace\b",
         "eBPF & Kernel Tracing",
         30,
-        "Highlight your 5-part research on binary-coverage research: measuring precompiled binary test coverage via eBPF uprobes and kernel ftrace with zero recompile overhead.",
+        "Highlight background in non-intrusive eBPF runtime observability, uprobes, and kernel tracing.",
     ),
     (
         r"\bpintool\b|\bdynamic binary\b|\bdlopen\b|\belf\b|\bgot\b|\bplt\b",
         "Binary Instrumentation & Dynamic Linking",
         25,
-        "Reference your Intel PinTool DBI analysis and dynamic library hooking (dlopen/PLT/GOT dynamic symbol resolution).",
+        "Reference dynamic binary instrumentation, symbol resolution, and library hooking.",
     ),
     # 2. Kernel Security, Sandboxing & Capabilities
     (
         r"\bkernel\b",
         "Linux Kernel",
         25,
-        "Emphasize Linux Test Project (LTP) test development and kernel ftrace/debugging experience at <employer>.",
+        "Emphasize systems programming, kernel debugging, and runtime test engineering.",
     ),
     (
         r"\blandlock\b|\bcapabilities\b|\bseccomp\b|\bsandbox\b",
         "Kernel Sandboxing & Capabilities",
         25,
-        "Point to your technical publications on Linux Landlock unprivileged LSM sandboxing, Linux Capabilities, and seccomp syscall filtering.",
+        "Highlight experience with modern Linux kernel sandboxing: Landlock LSM, Linux Capabilities, and seccomp filtering.",
     ),
     # 3. OS Testing, Reliability & Fault Injection
     (
         r"\bltp\b|\blinux test project\b|\bkexec\b",
         "LTP & OS Reliability",
         25,
-        "Highlight your experience running and extending the Linux Test Project (LTP) and instant kernel reboots with kexec.",
+        "Highlight experience with operating system qualification, test development, and fast kernel reboot mechanisms.",
     ),
     (
         r"\bfault injection\b|\bchaos\b|\bnetns\b|\btrafic control\b|\btc\b|\bnetem\b",
         "Fault Injection & Simulation",
         20,
-        "Note your work simulating edge failures: network namespace packet loss/latency injection with NetEm and disk failures with dm-flakey.",
+        "Reference edge failure simulation: network namespace packet loss/latency injection and disk resilience testing.",
     ),
     (
         r"\bopenqa\b|\bautomated testing\b|\bqe\b|\bos validation\b",
-        "openQA & OS Validation",
+        "Automated OS Validation & QE",
         20,
-        "Highlight your current <employer> QE automation role: automating openQA test job matrix cloning via REST APIs and custom tooling.",
+        "Highlight automated qualification, test matrix orchestration via REST APIs, and regression monitoring.",
     ),
     # 4. Containers, systemd & Virtualization
     (
         r"\bsystemd\b|\bsocket activation\b",
         "systemd Plumbing",
         20,
-        "Reference your blog guides on declarative systemd socket-activated services (SD_LISTEN_FDS) and zero-idle architecture.",
+        "Reference declarative systemd services, socket-activated daemons (SD_LISTEN_FDS), and zero-idle architecture.",
     ),
     (
         r"\bquadlet\b|\bpodman\b|\bcontainer\b|\bdocker\b|\brootless\b",
-        "Podman Quadlets & Containers",
+        "Containers & Isolation",
         20,
-        "Leverage your experience with Podman Quadlets (.container units), rootless user namespaces, and container security.",
+        "Leverage experience with declarative container units, rootless user namespaces, and container security.",
     ),
     (
         r"\bqemu\b|\bkvm\b|\bvirtualization\b",
         "QEMU/KVM & Virtualization",
         20,
-        "Reference your open-source a QEMU VM runner multi-arch QEMU runner and RHCVA virtualization administrator certification.",
+        "Reference virtual machine orchestration, hypervisor management, and virtualization administration.",
     ),
-    # 5. Core Systems Programming & Packaging
+    # 5. Core Systems Programming & Languages
     (
         r"\bgolang\b|\bgo\b",
         "Go (Golang)",
         20,
-        "Highlight concurrent Go daemon engineering, GoLab conference talks, and systems tooling.",
+        "Highlight concurrent Go systems engineering, daemons, and CLI tooling.",
     ),
     (
         r"\bc\b(?!\+\+)|\bc\+\+",
-        "C / C++20 Systems",
+        "C / C++ Systems",
         20,
-        "Point to your C low-level systems programming, dlopen dynamic linking, and Zero-JS C++20 desktop monitors.",
+        "Point to low-level C/C++ systems programming, memory safety, and POSIX primitives.",
+    ),
+    (
+        r"\brust\b",
+        "Rust",
+        20,
+        "Highlight memory-safe systems programming and high-performance services in Rust.",
     ),
     (
         r"\brpm\b|\bpackaging\b|\bobs\b",
-        "RPM & Open Build Service",
+        "Linux Packaging & Build Services",
         15,
-        "Highlight active openSUSE RPM package maintainer status on Open Build Service.",
+        "Highlight Linux package maintenance, distribution packaging, and automated build systems.",
     ),
     (
         r"\bobservability\b|\btelemetry\b|\bmonitoring\b|\bprometheus\b",
         "Observability & Telemetry",
         15,
-        "Emphasize runtime telemetry instrumentation and custom observability agents.",
+        "Emphasize runtime telemetry instrumentation, metric pipelines, and custom observability agents.",
     ),
     # 6. SRE, DevOps & Cloud Platform Infrastructure
     (
         r"\bsre\b|\bsite reliability\b|\bproduction engineering\b",
         "Site Reliability Engineering (SRE)",
         20,
-        "Highlight your experience operating enterprise Linux production environments, automated fault injection, and zero-idle daemon architecture.",
+        "Highlight experience operating high-availability Linux environments, fault tolerance, and production reliability.",
     ),
     (
         r"\bdevops\b|\bplatform engineering\b|\bplatform engineer\b|\bci/cd\b|\bkubernetes\b|\bk8s\b",
         "Platform Engineering & DevOps",
         20,
-        "Reference your extensive CI/CD validation pipelines, openQA matrix automation, Kubernetes container orchestration, and multi-node fleet management.",
+        "Reference CI/CD deployment pipelines, automated validation, and Kubernetes container orchestration.",
     ),
     (
         r"\blinux\b",
         "Linux Foundation",
         15,
-        "Leverage many years continuous Linux engineering experience  and RHCE / SLES certifications.",
+        "Leverage solid Linux engineering foundation and enterprise systems experience.",
     ),
 ]
+
+
+def get_active_skill_matrix() -> List[Tuple[str, str, int, str]]:
+    """Retrieve skill matrix from candidate profile or fallback to defaults."""
+    prof = load_profile()
+    custom_matrix = prof.get("skill_matrix")
+    if custom_matrix and isinstance(custom_matrix, list):
+        parsed = []
+        for item in custom_matrix:
+            if isinstance(item, dict) and "pattern" in item and "name" in item:
+                parsed.append((
+                    item["pattern"],
+                    item["name"],
+                    int(item.get("weight", 20)),
+                    item.get("pitch", ""),
+                ))
+        if parsed:
+            return parsed
+    return DEFAULT_SKILL_MATRIX
 
 
 def evaluate_profile(title: str, content: str) -> ProfileMatch:
@@ -126,7 +152,8 @@ def evaluate_profile(title: str, content: str) -> ProfileMatch:
     matched_weights = 0
     pitch_bullets = []
 
-    for pattern, name, weight, pitch in SKILL_MATRIX:
+    matrix = get_active_skill_matrix()
+    for pattern, name, weight, pitch in matrix:
         if re.search(pattern, text, re.IGNORECASE):
             matched_skills.append(name)
             matched_weights += weight
@@ -136,8 +163,11 @@ def evaluate_profile(title: str, content: str) -> ProfileMatch:
     match_pct = min(100, int((matched_weights / 80) * 100))
 
     if not pitch_bullets:
-        pitch_bullets.append("Leverage many years Linux engineering experience  and current <employer> platform foundation.")
-        pitch_bullets.append("Emphasize automation of thousands of Linux servers and RHCE/SLES certifications.")
+        cand = get_candidate_info()
+        headline = cand.get("headline", "Systems Engineering")
+        years = cand.get("experience_years", 10)
+        pitch_bullets.append(f"Highlight {years}+ years of systems engineering background and {headline} foundation.")
+        pitch_bullets.append("Emphasize automated reliability testing, Linux platform internals, and production scalability.")
 
     return ProfileMatch(
         match_pct=match_pct,
@@ -147,7 +177,7 @@ def evaluate_profile(title: str, content: str) -> ProfileMatch:
 
 
 class ProfileMatchStage(PipelineStage):
-    """Computes candidate skill alignment based on blog research and adds pitch bullets."""
+    """Computes candidate skill alignment based on profile research and adds pitch bullets."""
 
     @property
     def name(self) -> str:

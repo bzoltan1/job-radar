@@ -14,5 +14,8 @@ from radar.sinks.telegram_sink import (
 
 
 def notify_new_jobs(jobs, token=None, chat_id=None):
-    msg = format_jobs_html(jobs)
+    valid_jobs = [j for j in jobs if not any("loc:eu_no_italy" in t for t in getattr(j, "tags", []))]
+    if not valid_jobs:
+        return False
+    msg = format_jobs_html(valid_jobs)
     return send_telegram_message(msg, token=token, chat_id=chat_id)

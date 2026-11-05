@@ -55,7 +55,7 @@ companies:
     sub_domain: wd5
     entity_in_italy: true
     eor_supported: true
-    notes: "Red Hat Italy S.r.l. Main peer to <employer>. Heavy Linux/Kernel/Platform."
+    notes: "Red Hat Italy S.r.l. Enterprise Linux, OpenShift, Kernel & Platform."
 
   - id: purestorage
     name: "Pure Storage"
@@ -309,3 +309,207 @@ companies:
     entity_in_italy: false
     eor_supported: true
     notes: "Fair-code workflow automation engine, TypeScript/Node, Berlin HQ & Remote Europe."
+
+  - id: nebius
+    name: "Nebius"
+    tier: scaleup
+    category: "AI Cloud & GPU Infrastructure"
+    ats: greenhouse
+    board: nebius
+    entity_in_italy: false
+    eor_supported: true
+    notes: "AI-centric cloud and GPU clusters, NVIDIA H100/H200, remote in 30 European countries."
+
+  - id: elevenlabs
+    name: "ElevenLabs"
+    tier: scaleup
+    category: "AI Voice & Audio"
+    ats: ashby
+    board: elevenlabs
+    entity_in_italy: false
+    eor_supported: true
+    notes: "AI voice and audio models. Remote across Europe."
+
+  - id: crowdstrike
+    name: "CrowdStrike"
+    tier: enterprise_infra
+    category: "Endpoint Security & Cloud Protection"
+    ats: workday
+    board: crowdstrike
+    site: crowdstrikecareers
+    sub_domain: wd5
+    entity_in_italy: true
+    eor_supported: true
+    notes: "Crowdstrike Italy S.r.l. Falcon platform, kernel/systems, Go/C++."
+
+  - id: nvidia
+    name: "Nvidia"
+    tier: big_tech
+    category: "GPU Computing & Systems"
+    ats: workday
+    board: nvidia
+    site: NVIDIAExternalCareerSite
+    sub_domain: wd5
+    entity_in_italy: true
+    eor_supported: true
+    notes: "Nvidia Italia S.r.l. Accelerated computing, Linux drivers, CUDA, networking."
+
+  - id: mozilla
+    name: "Mozilla"
+    tier: enterprise_infra
+    category: "Browser & Open Source"
+    ats: greenhouse
+    board: mozilla
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Firefox, Rust, systems engineering, distributed infrastructure. Remote in EU/UK."
+
+  - id: kraken
+    name: "Kraken"
+    tier: scaleup
+    category: "Crypto & Trading Infrastructure"
+    ats: ashby
+    board: kraken.com
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Crypto exchange platform, high throughput, distributed backend. Remote across Europe."
+
+  - id: tether
+    name: "Tether"
+    tier: scaleup
+    category: "Stablecoin & Financial Systems"
+    ats: recruitee
+    board: tether
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Stablecoin issuer, high performance financial infrastructure. Remote worldwide."
+
+  - id: affirm
+    name: "Affirm"
+    tier: scaleup
+    category: "Fintech & Payments"
+    ats: greenhouse
+    board: affirm
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Payments and BNPL infrastructure. Remote in Europe (UK, Spain, Poland, etc.)."
+
+  - id: deel
+    name: "Deel"
+    tier: scaleup
+    category: "Global Payroll & HR Infrastructure"
+    ats: deel
+    board: deel
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Global payroll, compliance, fintech platform. 100% remote pioneer."
+
+  - id: alan
+    name: "Alan"
+    tier: scaleup
+    category: "Health Insurance & Platform"
+    ats: ashby
+    board: alan
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Digital health insurance platform. Remote in France, Spain, Belgium, Europe."
+
+  - id: camunda
+    name: "Camunda"
+    tier: enterprise_infra
+    category: "Process Orchestration & Distributed Systems"
+    ats: ashby
+    board: camunda
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Zeebe distributed workflow engine, Go/Java, Kubernetes. Remote across Europe."
+
+  - id: castai
+    name: "Cast AI"
+    tier: scaleup
+    category: "Kubernetes & Cloud Cost Automation"
+    ats: greenhouse
+    board: castaigroupinc
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Kubernetes automation, cloud cost optimization, Go, eBPF. Remote across Europe."
+
+  - id: zscaler
+    name: "Zscaler"
+    tier: enterprise_infra
+    category: "Cloud Security & Zero Trust"
+    ats: greenhouse
+    board: zscaler
+    entity_in_italy: true
+    eor_supported: true
+    notes: "Zscaler Italy S.r.l. Cloud security, distributed proxy, high throughput networking."
+
+  - id: tide
+    name: "Tide"
+    tier: scaleup
+    category: "Business Banking & Financial Platform"
+    ats: greenhouse
+    board: tide
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Business financial platform, microservices, cloud infra. Remote across Europe/UK."
+
+  - id: mistral
+    name: "Mistral AI"
+    tier: scaleup
+    category: "Foundation Models & AI Systems"
+    ats: ashby
+    board: mistral.ai
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Open-weight frontier LLMs, GPU cluster infrastructure, high performance inference."
+
+  - id: fingerprint
+    name: "Fingerprint"
+    tier: scaleup
+    category: "Device Intelligence & Anti-Fraud"
+    ats: greenhouse
+    board: fingerprint
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Browser fingerprinting, device intelligence, edge computing. 100% remote worldwide."
+
+  - id: primer
+    name: "Primer"
+    tier: scaleup
+    category: "Payments Infrastructure"
+    ats: ashby
+    board: primer.io
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Unified payments infrastructure, distributed systems. Remote across Europe."
+
+  - id: addepar
+    name: "Addepar"
+    tier: enterprise_infra
+    category: "Wealth Management & Financial Data"
+    ats: greenhouse
+    board: addepar1
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Financial calculation engines, big data platforms. Remote in UK and Europe."
+
+  - id: prolific
+    name: "Prolific"
+    tier: scaleup
+    category: "AI Research & Data Platform"
+    ats: greenhouse
+    board: prolific
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Platform for human data in AI and scientific research. Remote in UK/Europe."
+
+  - id: tem
+    name: "Tem"
+    tier: scaleup
+    category: "Energy Trading & Infrastructure"
+    ats: ashby
+    board: tem
+    entity_in_italy: false
+    eor_supported: true
+    notes: "Renewable energy transactions, real-time energy trading platform. Remote UK/Europe."

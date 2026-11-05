@@ -40,6 +40,9 @@ def get_db(db_path: str = DB_PATH) -> sqlite3.Connection:
                 status TEXT DEFAULT 'new'
             )
         """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_active_score ON jobs(active, score DESC)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_salary ON jobs(salary_norm_max DESC)")
     return conn
 
 

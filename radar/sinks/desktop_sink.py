@@ -1,6 +1,7 @@
 """Desktop notification sink plugin."""
 
-import os
+import shutil
+import subprocess
 from typing import Any, Dict, List
 
 from radar.models import Job
@@ -11,12 +12,18 @@ class DesktopSink(BaseSink):
     name = "desktop"
 
     def export(self, jobs: List[Job], context: Dict[str, Any]):
-        if not jobs or not os.path.exists("/usr/bin/notify-send"):
+        eligible = [
+            j for j in jobs
+            if not any("loc:eu_no_italy" in t or "loc:foreign_restriction" in t for t in j.tags)
+        ]
+        notify_bin = shutil.which("notify-send")
+        if not eligible or not notify_bin:
             return
 
-        top = sorted(jobs, key=lambda x: x.score, reverse=True)[0]
+        top = sorted(eligible, key=lambda x: x.score, reverse=True)[0]
+        header = f"Job Radar: Top Match [{top.score}]"
+        body = f"{top.company_id.capitalize()}: {top.title}"
         try:
-            cmd = f'/usr/bin/notify-send "Job Radar: Top Match [{top.score}]" "{top.company_id.capitalize()}: {top.title}"'
-            os.system(cmd)
+            subprocess.run([notify_bin, header, body], check=False)
         except Exception:
             pass

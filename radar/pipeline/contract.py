@@ -1,6 +1,7 @@
 """Contract type & company tier scoring stage."""
 
 import re
+from radar.config import get_location_config
 from radar.models import Job, PipelineContext, RawJob
 from radar.pipeline.base import PipelineStage, StageResult
 
@@ -40,13 +41,24 @@ class ContractStage(PipelineStage):
             score_delta += 15
             tags.append("tier:scaleup")
 
-        # Legal entity / EOR bonus (only awarded if role is Italian or broad global remote)
-        # Bypassed if loc:eu_no_italy is present
-        is_eu_no_italy = any("loc:eu_no_italy" in t for t in job.tags)
-        if not is_eu_no_italy:
-            if company.entity_in_italy:
+        # Legal entity / EOR bonus (only awarded if role is direct local country or broad global remote)
+        # Bypassed if single-country foreign restriction is present
+        loc_cfg = get_location_config()
+        primary_country = loc_cfg.get("primary_country", "Italy")
+        is_foreign_restricted = any("loc:eu_no_italy" in t or "loc:foreign_restriction" in t for t in job.tags)
+
+        if not is_foreign_restricted:
+            has_entity = (
+                company.has_local_entity(primary_country)
+                if hasattr(company, "has_local_entity")
+                else company.entity_in_italy
+            )
+            if has_entity:
                 score_delta += 35
-                tags.append("legal:it_entity")
+                tags.append(f"legal:{primary_country[:2].lower()}_entity")
+                tags.append("legal:local_entity")
+                if primary_country.lower() == "italy":
+                    tags.append("legal:it_entity")
             elif company.eor_supported:
                 score_delta += 25
                 tags.append("legal:eor")

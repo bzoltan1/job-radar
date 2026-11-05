@@ -4,7 +4,12 @@ import argparse
 import os
 import sys
 
-from radar.config import load_all_intel, load_company_intel, load_targets
+from radar.config import (
+    get_location_config,
+    load_all_intel,
+    load_company_intel,
+    load_targets,
+)
 from radar.db import (
     deactivate_company_jobs,
     get_active_jobs,
@@ -83,10 +88,11 @@ def cmd_sync(args):
 
 def cmd_top(args):
     conn = get_db()
+    is_local = getattr(args, "local_only", False) or getattr(args, "italy_only", False)
     jobs = get_active_jobs(
         conn,
         min_score=args.min_score,
-        italy_only=args.italy_only,
+        italy_only=is_local,
         by_salary=args.by_salary,
         by_profile=args.by_profile,
         has_salary=args.has_salary,
@@ -178,18 +184,26 @@ def cmd_company(args):
         for s in intel["interview_process"].get("stages", []):
             print(f"  - {s}")
         print("\nInsider Preparation Tip:")
-        print(f"  > {intel['interview_process'].get('insider_tips')}")
+        tip = (
+            intel["interview_process"].get("insider_tips")
+            or intel["interview_process"].get("candidate_tips")
+            or intel["interview_process"].get("interview_tips")
+        )
+        print(f"  > {tip}")
 
 
 def cmd_stats(args):
     conn = get_db()
+    loc_cfg = get_location_config()
+    country_name = loc_cfg.get("primary_country", "Italy").capitalize()
+
     total_active = conn.execute("SELECT count(*) FROM jobs WHERE active = 1").fetchone()[0]
-    total_it = conn.execute("SELECT count(*) FROM jobs WHERE active = 1 AND is_italy_direct = 1").fetchone()[0]
+    total_local = conn.execute("SELECT count(*) FROM jobs WHERE active = 1 AND is_italy_direct = 1").fetchone()[0]
     total_sal = conn.execute("SELECT count(*) FROM jobs WHERE active = 1 AND salary_norm_max > 0").fetchone()[0]
     high_match = conn.execute("SELECT count(*) FROM jobs WHERE active = 1 AND profile_match_pct >= 75").fetchone()[0]
 
     print(f"Active tracked jobs in DB: {total_active}")
-    print(f"Jobs with direct Italy location: {total_it}")
+    print(f"Jobs with direct {country_name} location: {total_local}")
     print(f"Jobs with salary disclosed: {total_sal}")
     print(f"Jobs with >=75% profile match: {high_match}")
 
@@ -217,7 +231,7 @@ def main():
     # top
     p_top = sub.add_parser("top", help="Show top scored jobs")
     p_top.add_argument("--min-score", type=int, default=50, help="Minimum score filter")
-    p_top.add_argument("--italy-only", action="store_true", help="Only show direct Italy locations")
+    p_top.add_argument("--local-only", "--italy-only", dest="local_only", action="store_true", help="Only show direct local country locations")
     p_top.add_argument("--by-salary", action="store_true", help="Sort highest paying jobs first")
     p_top.add_argument("--by-profile", action="store_true", help="Sort highest profile match first")
     p_top.add_argument("--has-salary", action="store_true", help="Only show jobs with salary disclosed")
