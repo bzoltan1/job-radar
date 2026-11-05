@@ -14,7 +14,7 @@ class DesktopSink(BaseSink):
     def export(self, jobs: List[Job], context: Dict[str, Any]):
         eligible = [
             j for j in jobs
-            if not any("loc:eu_no_italy" in t or "loc:foreign_restriction" in t for t in j.tags)
+            if not any("loc:foreign_restriction" in t for t in j.tags)
         ]
         notify_bin = shutil.which("notify-send")
         if not eligible or not notify_bin:

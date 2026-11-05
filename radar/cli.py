@@ -88,11 +88,10 @@ def cmd_sync(args):
 
 def cmd_top(args):
     conn = get_db()
-    is_local = getattr(args, "local_only", False) or getattr(args, "italy_only", False)
     jobs = get_active_jobs(
         conn,
         min_score=args.min_score,
-        italy_only=is_local,
+        home_only=args.home_only,
         by_salary=args.by_salary,
         by_profile=args.by_profile,
         has_salary=args.has_salary,
@@ -172,7 +171,7 @@ def cmd_company(args):
     print(f"🏛️  {intel.get('name', args.company_id.capitalize())} — Dossier")
     print(f"Tier:            {intel.get('tier')}")
     print(f"Glassdoor:       {intel.get('glassdoor_rating')}/5.0 (Recommend: {intel.get('recommend_to_friend')})")
-    print(f"Italian Entity:  {intel.get('italy_legal_entity')}")
+    print(f"Home Entity:     {intel.get('home_legal_entity')}")
     print(f"Remote Policy:   {intel.get('remote_policy')}")
     print(f"Benchmark Comp:  {intel.get('emea_staff_comp_range')}")
     print("-" * 80)
@@ -195,15 +194,15 @@ def cmd_company(args):
 def cmd_stats(args):
     conn = get_db()
     loc_cfg = get_location_config()
-    country_name = loc_cfg.get("primary_country", "Italy").capitalize()
+    country_name = loc_cfg["home_country"].capitalize()
 
     total_active = conn.execute("SELECT count(*) FROM jobs WHERE active = 1").fetchone()[0]
-    total_local = conn.execute("SELECT count(*) FROM jobs WHERE active = 1 AND is_italy_direct = 1").fetchone()[0]
+    total_home = conn.execute("SELECT count(*) FROM jobs WHERE active = 1 AND is_home_direct = 1").fetchone()[0]
     total_sal = conn.execute("SELECT count(*) FROM jobs WHERE active = 1 AND salary_norm_max > 0").fetchone()[0]
     high_match = conn.execute("SELECT count(*) FROM jobs WHERE active = 1 AND profile_match_pct >= 75").fetchone()[0]
 
     print(f"Active tracked jobs in DB: {total_active}")
-    print(f"Jobs with direct {country_name} location: {total_local}")
+    print(f"Jobs with direct {country_name} location: {total_home}")
     print(f"Jobs with salary disclosed: {total_sal}")
     print(f"Jobs with >=75% profile match: {high_match}")
 
@@ -231,7 +230,7 @@ def main():
     # top
     p_top = sub.add_parser("top", help="Show top scored jobs")
     p_top.add_argument("--min-score", type=int, default=50, help="Minimum score filter")
-    p_top.add_argument("--local-only", "--italy-only", dest="local_only", action="store_true", help="Only show direct local country locations")
+    p_top.add_argument("--home-only", dest="home_only", action="store_true", help="Only show direct home-country locations")
     p_top.add_argument("--by-salary", action="store_true", help="Sort highest paying jobs first")
     p_top.add_argument("--by-profile", action="store_true", help="Sort highest profile match first")
     p_top.add_argument("--has-salary", action="store_true", help="Only show jobs with salary disclosed")
@@ -268,7 +267,7 @@ def main():
     p_dlist = disc_sub.add_parser("list", help="List curated peer companies")
     p_dlist.add_argument("--category", help="Filter by category")
     p_dlist.add_argument("--tier", help="Filter by tier")
-    p_dlist.add_argument("--italy-only", action="store_true", help="Only show with Italy entity or EOR")
+    p_dlist.add_argument("--home-only", action="store_true", help="Only show with home-country entity or EOR")
 
     p_dadd = disc_sub.add_parser("add", help="Add peer company to tracked targets")
     p_dadd.add_argument("company_id", help="Company ID to add")
@@ -295,7 +294,7 @@ def main():
         cmd_stats(args)
     elif args.command == "discover":
         if args.discover_cmd == "list":
-            list_peers(args.category, args.tier, args.italy_only)
+            list_peers(args.category, args.tier, args.home_only)
         elif args.discover_cmd == "add":
             add_peer(args.company_id)
         elif args.discover_cmd == "cncf":

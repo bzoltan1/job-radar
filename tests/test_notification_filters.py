@@ -26,12 +26,12 @@ def make_dummy_job(job_id: str, score: int, tags: list, title: str = "Senior Sys
 
 class TestNotificationSinks(unittest.TestCase):
     @patch("radar.sinks.telegram_sink.send_telegram_message")
-    def test_telegram_sink_filters_eu_no_italy(self, mock_send):
+    def test_telegram_sink_filters_foreign_restriction(self, mock_send):
         mock_send.return_value = True
         sink = TelegramSink()
 
-        job_uk = make_dummy_job("j1", 80, ["loc:eu_no_italy(-40)", "role:systems"], title="UK Only Role")
-        job_it = make_dummy_job("j2", 80, ["loc:italy_direct", "role:systems"], title="Italy Remote Role")
+        job_uk = make_dummy_job("j1", 80, ["loc:foreign_restriction(-40)", "role:systems"], title="UK Only Role")
+        job_it = make_dummy_job("j2", 80, ["loc:home_country", "role:systems"], title="Italy Remote Role")
 
         ctx = {"min_score": 70, "force_notify": True}
         sink.export([job_uk, job_it], ctx)
@@ -43,12 +43,12 @@ class TestNotificationSinks(unittest.TestCase):
         self.assertIn("Job Radar: 1 New Top Matches", call_arg)
 
     @patch("radar.sinks.telegram_sink.send_telegram_message")
-    def test_telegram_sink_skips_when_all_eu_no_italy(self, mock_send):
+    def test_telegram_sink_skips_when_all_foreign_restriction(self, mock_send):
         mock_send.return_value = True
         sink = TelegramSink()
 
-        job_uk = make_dummy_job("j1", 100, ["loc:eu_no_italy(-40)"])
-        job_pl = make_dummy_job("j2", 100, ["loc:eu_no_italy(-40)"])
+        job_uk = make_dummy_job("j1", 100, ["loc:foreign_restriction(-40)"])
+        job_pl = make_dummy_job("j2", 100, ["loc:foreign_restriction(-40)"])
 
         ctx = {"min_score": 70, "force_notify": True}
         sink.export([job_uk, job_pl], ctx)
@@ -56,18 +56,18 @@ class TestNotificationSinks(unittest.TestCase):
         self.assertFalse(mock_send.called)
 
     @patch("telegram_notify.send_telegram_message")
-    def test_legacy_wrapper_filters_eu_no_italy(self, mock_send):
-        job_uk = make_dummy_job("j1", 100, ["loc:eu_no_italy(-40)"])
+    def test_legacy_wrapper_filters_foreign_restriction(self, mock_send):
+        job_uk = make_dummy_job("j1", 100, ["loc:foreign_restriction(-40)"])
         res = notify_new_jobs([job_uk])
         self.assertFalse(res)
         self.assertFalse(mock_send.called)
 
     @patch("subprocess.run")
     @patch("shutil.which", return_value="/usr/bin/notify-send")
-    def test_desktop_sink_filters_eu_no_italy(self, mock_which, mock_run):
+    def test_desktop_sink_filters_foreign_restriction(self, mock_which, mock_run):
         sink = DesktopSink()
-        job_uk = make_dummy_job("j1", 120, ["loc:eu_no_italy(-40)"])
-        job_it = make_dummy_job("j2", 75, ["loc:italy_direct"])
+        job_uk = make_dummy_job("j1", 120, ["loc:foreign_restriction(-40)"])
+        job_it = make_dummy_job("j2", 75, ["loc:home_country"])
 
         sink.export([job_uk, job_it], {})
         self.assertTrue(mock_run.called)

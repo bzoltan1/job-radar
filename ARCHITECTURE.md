@@ -1,6 +1,6 @@
 # Job Radar: Modular Architecture & Plugin System
 
-Job Radar is an automated career intelligence and scoring engine specifically tuned for Linux, kernel, and systems platform roles eligible for Italy-based engineers.
+Job Radar is an automated career intelligence and scoring engine specifically tuned for Linux, kernel, and systems platform roles eligible for engineers based in the configured country.
 
 ---
 
@@ -20,7 +20,7 @@ Data flows through three distinct plugin layers:
 ┌─────────────────────────┐
 │     Pipeline Stages     │
 │  1. TitleFilterStage    │ ◄── drops non-eng, non-systems
-│  2. LocationStage       │ ◄── Italy (+25), EU-no-Italy (-40), Austria (+15), non-EU drop
+│  2. LocationStage       │ ◄── Primary country (+25), foreign single-country lock (-40), allowed countries (+15), non-EU drop
 │  3. ContractStage       │ ◄── drops B2B, awards legal entity / EOR bonuses
 │  4. RoleSeniorityStage  │ ◄── systems/SRE relevance (+30), staff/principal (+20), tech stack
 │  5. SalaryStage         │ ◄── EUR normalization, >150k (+35), >120k (+25), >85k (+15)
@@ -74,7 +74,7 @@ job-radar/
 │   │   ├── base.py               # PipelineStage interface
 │   │   ├── engine.py             # PipelineEngine orchestrator
 │   │   ├── title.py              # Title & hard tech exclusions
-│   │   ├── location.py           # Italy, EU-no-Italy, Non-EU filter
+│   │   ├── location.py           # Primary country, foreign lock, Non-EU filter
 │   │   ├── contract.py           # B2B drop, legal entity bonuses
 │   │   ├── role.py               # Systems/SRE role & seniority scoring
 │   │   ├── salary.py             # Regex parser & EUR normalization

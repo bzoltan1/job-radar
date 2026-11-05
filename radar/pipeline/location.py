@@ -82,11 +82,11 @@ class LocationStage(PipelineStage):
         company = context.target
 
         loc_cfg = get_location_config()
-        primary_country = loc_cfg.get("primary_country", "Italy").lower()
+        home_country = loc_cfg["home_country"].lower()
         allowed_countries = [c.lower() for c in loc_cfg.get("allowed_countries", ["Austria"])]
 
-        primary_re = get_country_regex(primary_country)
-        is_direct_primary = bool(primary_re.search(location)) or bool(primary_re.search(title))
+        home_re = get_country_regex(home_country)
+        is_direct_home = bool(home_re.search(location)) or bool(home_re.search(title))
 
         is_direct_allowed = False
         for ac in allowed_countries:
@@ -102,17 +102,17 @@ class LocationStage(PipelineStage):
             if austria_re.search(location) or austria_re.search(title):
                 is_direct_allowed = True
 
-        # Hybrid / On-site check: must match primary or allowed country directly
+        # Hybrid / On-site check: must match home or allowed country directly
         is_hybrid = bool(re.search(r"\bhybrid\b", location, re.IGNORECASE))
         is_onsite = bool(re.search(r"\b(in-office|on-?site)\b", location, re.IGNORECASE))
-        if (is_hybrid or is_onsite) and not (is_direct_primary or is_direct_allowed):
+        if (is_hybrid or is_onsite) and not (is_direct_home or is_direct_allowed):
             return StageResult(should_continue=False)
 
         # Disqualify non-EU positions (unless candidate is in that country or job is EMEA/global)
         is_non_eu = bool(NON_EU_DISQUALIFY_RE.search(location)) or bool(re.search(r"(?:\|\s*|\(\s*|\b-\s*|\b—\s*)(us\b|usa\b|united states|canada|india|australia|singapore|japan|apac|americas|amer\b|latam)(?:\s*\||\s*\)|\s*-|\s*—|\s*$)", title, re.IGNORECASE))
         title_non_eu = bool(re.search(r"\b(amer\b|americas|apac|latam|us\b|usa\b)\b", title, re.IGNORECASE))
         has_global_or_emea = (bool(LOCATION_EMEA_REMOTE_RE.search(location)) or bool(re.search(r"\b(emea|europe)\b", title, re.IGNORECASE))) and not title_non_eu
-        if is_non_eu and not (is_direct_primary or is_direct_allowed or has_global_or_emea):
+        if is_non_eu and not (is_direct_home or is_direct_allowed or has_global_or_emea):
             return StageResult(should_continue=False)
 
         # Check remote indicators
@@ -120,18 +120,18 @@ class LocationStage(PipelineStage):
         is_loc_geo = bool(LOCATION_EMEA_REMOTE_RE.search(location)) or (location.strip().lower() in ("remote", "distributed"))
         is_remote_keyword = bool(re.search(r"\b(remote|distributed|telecommute|work from home)\b", f"{title} {location}", re.IGNORECASE))
 
-        if not (is_direct_primary or is_direct_allowed or is_title_geo or is_loc_geo or is_remote_keyword):
+        if not (is_direct_home or is_direct_allowed or is_title_geo or is_loc_geo or is_remote_keyword):
             return StageResult(should_continue=False)
 
         # Detect single-country foreign lock
         detected_countries = get_eu_countries(f"{title} {location}")
-        accepted_countries = {primary_country} | set(allowed_countries)
+        accepted_countries = {home_country} | set(allowed_countries)
         foreign_restrictions = detected_countries - accepted_countries
 
         is_foreign_single_country = False
         is_emea_remote = False
 
-        if is_direct_primary or is_direct_allowed:
+        if is_direct_home or is_direct_allowed:
             pass
         elif len(foreign_restrictions) > 0 and (is_remote_keyword or is_loc_geo or is_title_geo):
             is_foreign_single_country = True
@@ -141,20 +141,17 @@ class LocationStage(PipelineStage):
             return StageResult(should_continue=False)
 
         # Update Job flags
-        job.is_local_direct = is_direct_primary
-        job.is_italy_direct = is_direct_primary if primary_country == "italy" else False
+        job.is_home_direct = is_direct_home
         job.is_emea_remote = is_emea_remote or is_direct_allowed or is_foreign_single_country
 
         # Compute score delta & tags
         score_delta = 0
         tags = []
 
-        if is_direct_primary:
+        if is_direct_home:
             score_delta += 25
-            tags.append(f"loc:{primary_country[:2]}_direct")
-            tags.append("loc:direct_country")
-            if primary_country == "italy":
-                tags.append("loc:italy_direct")
+            tags.append(f"loc:{home_country[:2]}_direct")
+            tags.append("loc:home_country")
         elif is_direct_allowed:
             score_delta += 15
             tags.append("loc:allowed_country")
@@ -162,7 +159,6 @@ class LocationStage(PipelineStage):
         elif is_foreign_single_country:
             score_delta -= 40
             tags.append("loc:foreign_restriction(-40)")
-            tags.append("loc:eu_no_italy(-40)")
         elif is_emea_remote:
             score_delta += 10
             tags.append("loc:emea_remote")

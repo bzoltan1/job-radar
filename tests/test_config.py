@@ -75,7 +75,7 @@ class TestConfigAndEnvironment(unittest.TestCase):
         }
         with patch.dict(os.environ, env_vars, clear=True):
             loc_cfg = get_location_config()
-            self.assertEqual(loc_cfg["primary_country"], "Germany")
+            self.assertEqual(loc_cfg["home_country"], "Germany")
             self.assertEqual(loc_cfg["allowed_countries"], ["Austria", "Switzerland"])
 
     def test_location_stage_with_custom_country(self):
@@ -93,8 +93,8 @@ class TestConfigAndEnvironment(unittest.TestCase):
             res_de = stage.process(raw_de, job_de, ctx)
             self.assertTrue(res_de.should_continue)
             self.assertEqual(res_de.score_delta, 25)
-            self.assertIn("loc:direct_country", res_de.tags)
-            self.assertTrue(job_de.is_local_direct)
+            self.assertIn("loc:home_country", res_de.tags)
+            self.assertTrue(job_de.is_home_direct)
 
             raw_uk = RawJob(id="2", company_id="testcomp", title="Systems Engineer (UK only)", location="London, UK", url="")
             job_uk = Job(id="2", company_id="testcomp", title="Systems Engineer (UK only)", location="London, UK", url="")
@@ -120,7 +120,7 @@ class TestConfigAndEnvironment(unittest.TestCase):
         res = stage.process(raw, job, ctx)
         self.assertTrue(res.should_continue)
         self.assertNotIn("loc:foreign_restriction(-40)", res.tags)
-        self.assertNotIn("loc:eu_no_italy(-40)", res.tags)
+        self.assertNotIn("loc:foreign_restriction(-40)", res.tags)
         self.assertEqual(res.score_delta, 10)  # emea_remote bonus
 
     def test_freshness_unparseable_date_is_neutral(self):

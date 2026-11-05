@@ -48,7 +48,7 @@ TELEGRAM_CHAT_ID="your_telegram_chat_id"
 
 # Minimum score or salary to trigger a Telegram alert
 JOB_RADAR_NOTIFY_MIN_SCORE=85
-JOB_RADAR_NOTIFY_MIN_SALARY=100000
+JOB_RADAR_NOTIFY_MIN_SALARY=90000
 
 # --- Obsidian Vault Export (Optional) ---
 OBSIDIAN_VAULT_PATH="~/vault/career"
@@ -68,7 +68,7 @@ cp data/profile.example.yaml data/profile.yaml
 ```
 
 Edit `data/profile.yaml`:
-- **`candidate`**: Set your name, headline, current role, years of experience, and primary country.
+- **`candidate`**: Set your name, headline, current role, years of experience, and home country.
 - **`compensation`**: Define target salary tiers (in EUR equivalent) for scoring boosts.
 - **`deep_domain_expertise`**: Define your core technical pillars.
 - **`scoring_weights`**: Customize keyword bonuses for titles and job descriptions.
@@ -89,7 +89,7 @@ companies:
     category: "Cloud Infrastructure"
     ats: greenhouse         # greenhouse, lever, ashby, workday, deel, recruitee
     board: examplecorp      # ATS board identifier
-    entity_in_italy: false  # Local legal entity presence
+    entity_in_home_country: false  # Home-country legal entity presence
     eor_supported: true     # Supports Employer of Record
     notes: "Distributed systems, Go & Rust."
 ```

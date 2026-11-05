@@ -76,8 +76,7 @@ def export_company_dossiers(vault_path: str, intel_data: dict, jobs: List[Job]):
     cand_info = get_candidate_info()
     cand_name = cand_info.get("name", "Candidate")
     loc_cfg = get_location_config()
-    country_name = loc_cfg.get("primary_country", "Italy").capitalize()
-    country_slug = country_name.lower()
+    country_name = loc_cfg["home_country"].capitalize()
 
     for cid, info in intel_data.items():
         comp_name = info.get("name", cid.capitalize())
@@ -104,7 +103,7 @@ def export_company_dossiers(vault_path: str, intel_data: dict, jobs: List[Job]):
             or ""
         )
 
-        entity_val = info.get(f"{country_slug}_legal_entity") or info.get("italy_legal_entity", "N/A")
+        entity_val = info.get("home_legal_entity", "N/A")
 
         content = f"""---
 title: "{comp_name}"
@@ -112,8 +111,7 @@ tier: "{info.get('tier', 'Unknown')}"
 glassdoor_rating: {info.get('glassdoor_rating', 0.0)}
 recommend_rate: "{info.get('recommend_to_friend', 'N/A')}"
 ceo_approval: "{info.get('ceo_approval', 'N/A')}"
-{country_slug}_legal_entity: "{entity_val}"
-italy_legal_entity: "{entity_val}"
+home_legal_entity: "{entity_val}"
 contract_type: "{info.get('contract_type', 'N/A')}"
 remote_policy: "{info.get('remote_policy', 'N/A')}"
 emea_staff_comp: "{info.get('emea_staff_comp_range', 'N/A')}"
@@ -164,8 +162,7 @@ def write_dashboard(path: str, jobs: List[Job], intel_data: dict):
     cand_info = get_candidate_info()
     cand_name = cand_info.get("name", "Candidate")
     loc_cfg = get_location_config()
-    country_name = loc_cfg.get("primary_country", "Italy").capitalize()
-    country_slug = country_name.lower()
+    country_name = loc_cfg["home_country"].capitalize()
 
     content = f"""---
 title: "Job Radar Dashboard"
@@ -186,7 +183,7 @@ tags:
     for cid, c_info in intel_data.items():
         name = c_info.get("name", cid.capitalize())
         rating = c_info.get("glassdoor_rating", "N/A")
-        entity = c_info.get(f"{country_slug}_legal_entity") or c_info.get("italy_legal_entity", "N/A")
+        entity = c_info.get("home_legal_entity", "N/A")
         comp = c_info.get("emea_staff_comp_range", "N/A")
         content += f"- [[{name}]] — `{rating}⭐` | Entity: `{entity}` | Staff Range: `{comp}`\n"
 
@@ -246,8 +243,7 @@ class ObsidianSink(BaseSink):
         cand_headline = cand_info.get("headline", "Systems Engineering")
 
         loc_cfg = get_location_config()
-        country_name = loc_cfg.get("primary_country", "Italy").capitalize()
-        country_slug = country_name.lower()
+        country_name = loc_cfg["home_country"].capitalize()
 
         exported_count = 0
         updated_count = 0
@@ -278,12 +274,11 @@ class ObsidianSink(BaseSink):
             eur_est = f"€{j.salary.norm_max_eur:,}" if j.salary.norm_max_eur > 0 else "N/A"
             tags_str = ";".join(j.tags)
 
-            is_direct_local = getattr(j, "is_local_direct", False) or j.is_italy_direct
-            has_legal_entity = "legal:local_entity" in tags_str or "legal:it_entity" in tags_str or (f"legal:{country_slug[:2]}_entity" in tags_str)
-            local_entity = (
-                c_info.get(f"{country_slug}_legal_entity")
-                or c_info.get("italy_legal_entity")
-                or ("YES" if (is_direct_local or has_legal_entity) else "NO")
+            is_direct_home = j.is_home_direct
+            has_legal_entity = "legal:home_entity" in tags_str
+            home_entity = (
+                c_info.get("home_legal_entity")
+                or ("YES" if (is_direct_home or has_legal_entity) else "NO")
             )
 
             match_pct = j.profile.match_pct
@@ -305,10 +300,8 @@ profile_match_pct: {match_pct}
 salary: "{salary_disp}"
 salary_norm_eur: {j.salary.norm_max_eur}
 location: "{j.location}"
-local_direct: {bool(is_direct_local)}
-italy_direct: {bool(j.is_italy_direct)}
-local_entity: "{local_entity}"
-italy_entity: "{local_entity}"
+home_direct: {bool(is_direct_home)}
+home_entity: "{home_entity}"
 status: "{status}"
 url: "{j.url}"
 date_updated: "{datetime.date.today().isoformat()}"
@@ -325,7 +318,7 @@ tags:
 - **Location**: `{j.location}`
 - **Compensation**: **{salary_disp}** (est. EUR: {eur_est})
 - **Profile Alignment**: **{match_pct}%** (`{matched_skills}`)
-- **Legal Entity ({country_name})**: `{local_entity}`
+- **Legal Entity ({country_name})**: `{home_entity}`
 - **Application Link**: [Open Job Posting]({j.url})
 
 ---

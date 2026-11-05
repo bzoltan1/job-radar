@@ -41,24 +41,17 @@ class ContractStage(PipelineStage):
             score_delta += 15
             tags.append("tier:scaleup")
 
-        # Legal entity / EOR bonus (only awarded if role is direct local country or broad global remote)
+        # Legal entity / EOR bonus (only awarded if role is direct home country or broad global remote)
         # Bypassed if single-country foreign restriction is present
         loc_cfg = get_location_config()
-        primary_country = loc_cfg.get("primary_country", "Italy")
-        is_foreign_restricted = any("loc:eu_no_italy" in t or "loc:foreign_restriction" in t for t in job.tags)
+        home_country = loc_cfg["home_country"]
+        is_foreign_restricted = any("loc:foreign_restriction" in t for t in job.tags)
 
         if not is_foreign_restricted:
-            has_entity = (
-                company.has_local_entity(primary_country)
-                if hasattr(company, "has_local_entity")
-                else company.entity_in_italy
-            )
-            if has_entity:
+            if company.has_home_entity():
                 score_delta += 35
-                tags.append(f"legal:{primary_country[:2].lower()}_entity")
-                tags.append("legal:local_entity")
-                if primary_country.lower() == "italy":
-                    tags.append("legal:it_entity")
+                tags.append(f"legal:{home_country[:2].lower()}_entity")
+                tags.append("legal:home_entity")
             elif company.eor_supported:
                 score_delta += 25
                 tags.append("legal:eor")

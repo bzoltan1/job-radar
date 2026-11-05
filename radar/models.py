@@ -45,8 +45,7 @@ class Job:
     url: str
     score: int = 0
     tags: List[str] = field(default_factory=list)
-    is_italy_direct: bool = False
-    is_local_direct: bool = False
+    is_home_direct: bool = False
     is_emea_remote: bool = False
     salary: SalaryInfo = field(default_factory=SalaryInfo)
     profile: ProfileMatch = field(default_factory=ProfileMatch)
@@ -68,7 +67,7 @@ class CompanyTarget:
     category: str = ""
     ats: str = "greenhouse"
     board: str = ""
-    entity_in_italy: bool = False
+    entity_in_home_country: bool = False
     eor_supported: bool = True
     allow_austria: bool = False
     notes: str = ""
@@ -76,14 +75,8 @@ class CompanyTarget:
     sub_domain: str = "wd5"
     extra: Dict[str, Any] = field(default_factory=dict)
 
-    def has_local_entity(self, country: str = "italy") -> bool:
-        c = country.lower().strip()
-        key = f"entity_in_{c}"
-        if key in self.extra:
-            return bool(self.extra[key])
-        if c == "italy":
-            return bool(self.entity_in_italy)
-        return False
+    def has_home_entity(self) -> bool:
+        return bool(self.entity_in_home_country)
 
 
 @dataclass

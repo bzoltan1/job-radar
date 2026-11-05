@@ -9,6 +9,8 @@ from radar.models import CompanyTarget
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_DIR = os.path.join(BASE_DIR, "data")
+# Used only when neither env nor profile configures a country.
+DEFAULT_HOME_COUNTRY = "Italy"
 INTEL_DIR = os.path.join(DATA_DIR, "intel")
 
 
@@ -90,8 +92,8 @@ def get_candidate_info() -> Dict[str, Any]:
         "headline": cand.get("headline", "Systems & Platform Engineer"),
         "current_role": cand.get("current_role", ""),
         "experience_years": cand.get("experience_years", 10),
-        "location": os.environ.get("CANDIDATE_LOCATION") or cand.get("location", "Italy"),
-        "allowed_locations": cand.get("allowed_locations", ["Italy", "Austria"]),
+        "location": os.environ.get("CANDIDATE_LOCATION") or cand.get("location", DEFAULT_HOME_COUNTRY),
+        "allowed_locations": cand.get("allowed_locations", ["Austria"]),
         "contract_preference": cand.get("contract_preference", "Employee contract"),
         "website": cand.get("website", ""),
     }
@@ -111,10 +113,10 @@ def get_salary_expectations() -> Dict[str, int]:
 def get_location_config() -> Dict[str, Any]:
     """Retrieve candidate target country and allowed secondary locations."""
     cand = get_candidate_info()
-    primary = (
+    home = (
         os.environ.get("CANDIDATE_COUNTRY")
         or os.environ.get("CANDIDATE_LOCATION")
-        or cand.get("location", "Italy")
+        or cand.get("location", DEFAULT_HOME_COUNTRY)
     ).strip()
 
     allowed_env = os.environ.get("CANDIDATE_ALLOWED_COUNTRIES")
@@ -130,7 +132,7 @@ def get_location_config() -> Dict[str, Any]:
             allowed = []
 
     return {
-        "primary_country": primary,
+        "home_country": home,
         "allowed_countries": allowed,
     }
 
@@ -197,7 +199,7 @@ def load_targets() -> List[CompanyTarget]:
                 category=c.get("category", ""),
                 ats=c.get("ats", "greenhouse"),
                 board=c.get("board", c["id"]),
-                entity_in_italy=c.get("entity_in_italy", False),
+                entity_in_home_country=c.get("entity_in_home_country", False),
                 eor_supported=c.get("eor_supported", True),
                 allow_austria=c.get("allow_austria", False),
                 notes=c.get("notes", ""),

@@ -16,7 +16,7 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "canonical",
-        "entity_in_italy": False,
+        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Ubuntu creators. Home based EMEA/Worldwide. EOR in Italy.",
     },
@@ -29,7 +29,7 @@ PEER_CATALOG = [
         "board": "redhat",
         "site": "jobs",
         "sub_domain": "wd5",
-        "entity_in_italy": True,
+        "entity_in_home_country": True,
         "eor_supported": True,
         "notes": "Red Hat Italy S.r.l. Enterprise Linux, OpenShift, Kernel & Systems.",
     },
@@ -42,7 +42,7 @@ PEER_CATALOG = [
         "board": "intel",
         "site": "External",
         "sub_domain": "wd1",
-        "entity_in_italy": True,
+        "entity_in_home_country": True,
         "eor_supported": True,
         "notes": "Intel Corporation Italia S.p.A. Linux kernel, toolchains, low-level systems.",
     },
@@ -53,7 +53,7 @@ PEER_CATALOG = [
         "tier": "big_tech",
         "ats": "smartrecruiters",
         "board": "Arm",
-        "entity_in_italy": True,
+        "entity_in_home_country": True,
         "eor_supported": True,
         "notes": "Arm architecture, Linux kernel enablement, toolchain, firmware.",
     },
@@ -64,7 +64,7 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "datadog",
-        "entity_in_italy": True,
+        "entity_in_home_country": True,
         "eor_supported": True,
         "notes": "Datadog Italy S.r.l. Major eBPF, Go, C, Linux kernel observability stack.",
     },
@@ -75,7 +75,7 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "grafanalabs",
-        "entity_in_italy": False,
+        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Fully distributed. Explicit 'Italy (Remote)' listings. Go, eBPF, Prometheus.",
     },
@@ -86,7 +86,7 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "sysdig",
-        "entity_in_italy": True,
+        "entity_in_home_country": True,
         "eor_supported": True,
         "notes": "Sysdig Italy S.r.l. with Milan hub. eBPF, Falco creators, runtime security agent.",
     },
@@ -97,7 +97,7 @@ PEER_CATALOG = [
         "tier": "big_tech",
         "ats": "greenhouse",
         "board": "cloudflare",
-        "entity_in_italy": True,
+        "entity_in_home_country": True,
         "eor_supported": True,
         "notes": "Cloudflare Italy S.r.l. Linux network stack, eBPF/XDP, kernel tuning, Go/Rust.",
     },
@@ -108,7 +108,7 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "elastic",
-        "entity_in_italy": True,
+        "entity_in_home_country": True,
         "eor_supported": True,
         "notes": "Distributed by design. Hires remote employees in Italy.",
     },
@@ -119,7 +119,7 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "gitlab",
-        "entity_in_italy": False,
+        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "All-remote company. EOR-based hiring across EMEA.",
     },
@@ -130,7 +130,7 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "docker",
-        "entity_in_italy": True,
+        "entity_in_home_country": True,
         "eor_supported": True,
         "notes": "Docker Desktop, Linux containers, buildx. Explicit Italy remote listings.",
     },
@@ -141,7 +141,7 @@ PEER_CATALOG = [
         "tier": "scaleup",
         "ats": "sidero",
         "board": "siderolabs",
-        "entity_in_italy": False,
+        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Creators of Talos Linux. 100% Go & Linux kernel immutable platform.",
     },
@@ -152,7 +152,7 @@ PEER_CATALOG = [
         "tier": "scaleup",
         "ats": "proxmox",
         "board": "proxmox",
-        "entity_in_italy": False,
+        "entity_in_home_country": False,
         "eor_supported": False,
         "allow_austria": True,
         "notes": "Vienna Austria headquarters. Proxmox VE, Debian, Linux kernel, QEMU/KVM, ZFS.",
@@ -164,7 +164,7 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "ciq",
-        "entity_in_italy": False,
+        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Rocky Linux commercial sponsor. Linux kernel live patching. 100% remote.",
     },
@@ -179,22 +179,22 @@ def load_tracked_ids():
     return {c["id"] for c in data.get("companies", [])}
 
 
-def list_peers(category=None, tier=None, italy_only=False):
+def list_peers(category=None, tier=None, home_only=False):
     tracked = load_tracked_ids()
-    print(f"\n{'ID':<15} | {'NAME':<20} | {'TIER':<16} | {'IT ENTITY':<9} | {'EOR':<5} | {'STATUS'}")
+    print(f"\n{'ID':<15} | {'NAME':<20} | {'TIER':<16} | {'ENTITY':<9} | {'EOR':<5} | {'STATUS'}")
     print("-" * 80)
     for p in PEER_CATALOG:
         if category and category.lower() not in p["category"].lower():
             continue
         if tier and tier.lower() != p["tier"].lower():
             continue
-        if italy_only and not (p["entity_in_italy"] or p["eor_supported"]):
+        if home_only and not (p["entity_in_home_country"] or p["eor_supported"]):
             continue
 
         status = "[TRACKED]" if p["id"] in tracked else "[AVAILABLE]"
-        it_ent = "YES" if p["entity_in_italy"] else "NO"
+        entity = "YES" if p["entity_in_home_country"] else "NO"
         eor = "YES" if p["eor_supported"] else "NO"
-        print(f"{p['id']:<15} | {p['name']:<20} | {p['tier']:<16} | {it_ent:<9} | {eor:<5} | {status}")
+        print(f"{p['id']:<15} | {p['name']:<20} | {p['tier']:<16} | {entity:<9} | {eor:<5} | {status}")
 
 
 def add_peer(company_id: str):

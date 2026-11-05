@@ -33,18 +33,21 @@ class AmazonSource(BaseSource):
 
     def fetch(self, target: CompanyTarget) -> List[RawJob]:
         loc_cfg = get_location_config()
-        primary_country = loc_cfg.get("primary_country", "Italy").lower()
-        country_code = AMAZON_COUNTRY_CODES.get(primary_country, "ITA")
+        home_country = loc_cfg["home_country"].lower()
+        country_code = AMAZON_COUNTRY_CODES.get(home_country)
 
         queries = [
             "https://www.amazon.jobs/en/search.json?base_query=bottlerocket&result_limit=50",
             "https://www.amazon.jobs/en/search.json?base_query=amazon+linux&result_limit=50",
             "https://www.amazon.jobs/en/search.json?base_query=firecracker&result_limit=50",
-            f"https://www.amazon.jobs/en/search.json?country={country_code}&category[]=software-development&result_limit=50",
-            f"https://www.amazon.jobs/en/search.json?country={country_code}&base_query=linux&result_limit=50",
-            f"https://www.amazon.jobs/en/search.json?country={country_code}&base_query=systems&result_limit=50",
             "https://www.amazon.jobs/en/search.json?base_query=linux+kernel&result_limit=50",
         ]
+        if country_code:  # unknown country: skip country-scoped queries
+            queries += [
+                f"https://www.amazon.jobs/en/search.json?country={country_code}&category[]=software-development&result_limit=50",
+                f"https://www.amazon.jobs/en/search.json?country={country_code}&base_query=linux&result_limit=50",
+                f"https://www.amazon.jobs/en/search.json?country={country_code}&base_query=systems&result_limit=50",
+            ]
         headers = {"User-Agent": "JobRadar/2.0"}
         jobs_by_id = {}
         for q_url in queries:
@@ -62,8 +65,8 @@ class AmazonSource(BaseSource):
                         loc = item.get("location", "")
                         norm_loc = item.get("normalized_location", "")
                         country = item.get("country_code", "")
-                        if country == country_code or primary_country in norm_loc.lower():
-                            full_loc = f"{loc}, {primary_country.capitalize()}"
+                        if country == country_code or home_country in norm_loc.lower():
+                            full_loc = f"{loc}, {home_country.capitalize()}"
                         else:
                             full_loc = f"{loc} ({norm_loc})" if norm_loc and norm_loc != loc else loc
 

@@ -20,7 +20,7 @@ def get_db(db_path: str = DB_PATH) -> sqlite3.Connection:
                 company_id TEXT,
                 title TEXT,
                 location TEXT,
-                is_italy_direct INTEGER,
+                is_home_direct INTEGER,
                 is_emea_remote INTEGER,
                 score INTEGER,
                 url TEXT,
@@ -40,6 +40,10 @@ def get_db(db_path: str = DB_PATH) -> sqlite3.Connection:
                 status TEXT DEFAULT 'new'
             )
         """)
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(jobs)")}
+        for legacy in ("is_italy_direct", "is_local_direct"):  # legacy column names
+            if legacy in cols:
+                conn.execute(f"ALTER TABLE jobs RENAME COLUMN {legacy} TO is_home_direct")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_active_score ON jobs(active, score DESC)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_salary ON jobs(salary_norm_max DESC)")
@@ -71,7 +75,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
             conn.execute(
                 """
                 INSERT INTO jobs (
-                    id, company_id, title, location, is_italy_direct, is_emea_remote,
+                    id, company_id, title, location, is_home_direct, is_emea_remote,
                     score, url, tags, salary_min, salary_max, salary_currency,
                     salary_display, salary_norm_max, profile_match_pct, matched_skills,
                     pitch_bullets, first_seen, last_seen, active
@@ -79,7 +83,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
                 ON CONFLICT(id) DO UPDATE SET
                     title=excluded.title,
                     location=excluded.location,
-                    is_italy_direct=excluded.is_italy_direct,
+                    is_home_direct=excluded.is_home_direct,
                     is_emea_remote=excluded.is_emea_remote,
                     score=excluded.score,
                     tags=excluded.tags,
@@ -100,7 +104,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
                     job.company_id,
                     job.title,
                     job.location,
-                    int(job.is_italy_direct),
+                    int(job.is_home_direct),
                     int(job.is_emea_remote),
                     job.score,
                     job.url,
@@ -120,7 +124,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
             conn.execute(
                 """
                 INSERT INTO jobs (
-                    id, company_id, title, location, is_italy_direct, is_emea_remote,
+                    id, company_id, title, location, is_home_direct, is_emea_remote,
                     score, url, tags, salary_min, salary_max, salary_currency,
                     salary_display, salary_norm_max, profile_match_pct, matched_skills,
                     pitch_bullets, last_seen, active
@@ -128,7 +132,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
                 ON CONFLICT(id) DO UPDATE SET
                     title=excluded.title,
                     location=excluded.location,
-                    is_italy_direct=excluded.is_italy_direct,
+                    is_home_direct=excluded.is_home_direct,
                     is_emea_remote=excluded.is_emea_remote,
                     score=excluded.score,
                     tags=excluded.tags,
@@ -148,7 +152,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
                     job.company_id,
                     job.title,
                     job.location,
-                    int(job.is_italy_direct),
+                    int(job.is_home_direct),
                     int(job.is_emea_remote),
                     job.score,
                     job.url,
@@ -168,7 +172,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
 def get_active_jobs(
     conn: sqlite3.Connection,
     min_score: int = 0,
-    italy_only: bool = False,
+    home_only: bool = False,
     by_salary: bool = False,
     by_profile: bool = False,
     has_salary: bool = False,
@@ -185,8 +189,8 @@ def get_active_jobs(
         query += " AND score >= ?"
         params.append(min_score)
 
-    if italy_only:
-        query += " AND is_italy_direct = 1"
+    if home_only:
+        query += " AND is_home_direct = 1"
 
     if has_salary:
         query += " AND salary_norm_max > 0"

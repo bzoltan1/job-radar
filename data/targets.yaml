@@ -1,7 +1,7 @@
 # Seed configuration of target companies
 # Categories:
 #   tier: big_tech | enterprise_infra | scaleup
-#   entity_in_italy: true (Direct S.r.l./branch) | false
+#   entity_in_home_country: true (Direct home-country entity/branch) | false
 #   eor_supported: true (Known to hire via Deel, Remote.com, CXC, etc.) | false | unknown
 
 companies:
@@ -11,7 +11,7 @@ companies:
     category: "Edge & Networking"
     ats: greenhouse
     board: cloudflare
-    entity_in_italy: true
+    entity_in_home_country: true
     eor_supported: true
     notes: "Cloudflare Italy S.r.l. exists. Linux kernel, systems, Rust/Go."
 
@@ -21,7 +21,7 @@ companies:
     category: "Security & eBPF"
     ats: lever
     board: sysdig
-    entity_in_italy: true
+    entity_in_home_country: true
     eor_supported: true
     notes: "Sysdig Italy S.r.l. (Milan office). Deep eBPF, kernel, C++, Go."
 
@@ -31,7 +31,7 @@ companies:
     category: "OS & Linux Platform"
     ats: greenhouse
     board: canonical
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Home-based EMEA/Worldwide. Full employee contract via EOR in Italy."
 
@@ -41,7 +41,7 @@ companies:
     category: "Observability & Systems"
     ats: greenhouse
     board: datadog
-    entity_in_italy: true
+    entity_in_home_country: true
     eor_supported: true
     notes: "Datadog Italy S.r.l. exists. Heavy Go, C, eBPF, Linux."
 
@@ -53,7 +53,7 @@ companies:
     board: redhat
     site: jobs
     sub_domain: wd5
-    entity_in_italy: true
+    entity_in_home_country: true
     eor_supported: true
     notes: "Red Hat Italy S.r.l. Enterprise Linux, OpenShift, Kernel & Platform."
 
@@ -63,7 +63,7 @@ companies:
     category: "Enterprise Storage & Systems"
     ats: greenhouse
     board: purestorage
-    entity_in_italy: true
+    entity_in_home_country: true
     eor_supported: true
     notes: "Pure Storage Italy S.r.l. (Milan). Low-level storage OS, C/C++, Linux kernel."
 
@@ -73,7 +73,7 @@ companies:
     category: "Distributed DB & Systems"
     ats: greenhouse
     board: mongodb
-    entity_in_italy: true
+    entity_in_home_country: true
     eor_supported: true
     notes: "MongoDB Italy S.r.l. WiredTiger storage engine (C), Atlas cloud (Go)."
 
@@ -83,7 +83,7 @@ companies:
     category: "Enterprise Data & Systems"
     ats: lever
     board: palantir
-    entity_in_italy: true
+    entity_in_home_country: true
     eor_supported: true
     notes: "Palantir Technologies Italy S.r.l. (Milan). High-scale distributed systems."
 
@@ -93,7 +93,7 @@ companies:
     category: "Observability & Infra"
     ats: greenhouse
     board: grafanalabs
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Fully distributed. Explicit 'Italy (Remote)' listings. Go, eBPF, Prometheus."
 
@@ -103,7 +103,7 @@ companies:
     category: "Search & Systems"
     ats: greenhouse
     board: elastic
-    entity_in_italy: true
+    entity_in_home_country: true
     eor_supported: true
     notes: "Distributed by design. Hires remote employees in Italy."
 
@@ -113,7 +113,7 @@ companies:
     category: "DevOps & Cloud Infra"
     ats: greenhouse
     board: gitlab
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "100% remote. Hires in Italy as employee via CXC / EOR."
 
@@ -123,7 +123,7 @@ companies:
     category: "Containers & Platform"
     ats: ashby
     board: docker
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Container platform, Go, Linux."
 
@@ -133,7 +133,7 @@ companies:
     category: "Edge & Systems"
     ats: greenhouse
     board: fastly
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Edge cloud, Linux kernel, networking."
 
@@ -143,7 +143,7 @@ companies:
     category: "Distributed Systems & DB"
     ats: greenhouse
     board: cockroachlabs
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Distributed SQL in Go. Remote EMEA roles."
 
@@ -153,7 +153,7 @@ companies:
     category: "Distributed Systems & Orchestration"
     ats: ashby
     board: temporal
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Workflow engine, Go. Remote friendly."
 
@@ -163,7 +163,7 @@ companies:
     category: "Cloud Infrastructure & OS"
     ats: amazon
     board: amazon
-    entity_in_italy: true
+    entity_in_home_country: true
     eor_supported: true
     notes: "Amazon Italia Services S.r.l. (Milan & Asti NICE DCV). Bottlerocket, Amazon Linux, Firecracker, Linux Kernel."
 
@@ -173,7 +173,7 @@ companies:
     category: "Container OS & Kubernetes"
     ats: sidero
     board: siderolabs
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Talos Linux, Omni. 100% remote (Europe/US). Go, Linux kernel, immutable OS."
 
@@ -183,7 +183,7 @@ companies:
     category: "Observability & Linux Platform"
     ats: dynatrace
     board: dynatrace
-    entity_in_italy: true
+    entity_in_home_country: true
     eor_supported: true
     allow_austria: true
     notes: "Dynatrace Italy S.r.l. (Milan) & Linz/Vienna Labs. Deep Linux agents, eBPF, OneAgent, distributed tracing."
@@ -194,7 +194,7 @@ companies:
     category: "Virtualization & Linux Platform"
     ats: proxmox
     board: proxmox
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     allow_austria: true
     notes: "Proxmox VE, PBS, Kernel, QEMU/KVM, Debian, Rust. Vienna / Remote."
@@ -205,7 +205,7 @@ companies:
     category: "Container OS & Supply Chain"
     ats: greenhouse
     board: chainguard
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Wolfi Linux, minimal container OS, apk packaging, security. 100% remote (Europe/US)."
 
@@ -215,7 +215,7 @@ companies:
     category: "Distributed Systems & DB"
     ats: ashby
     board: clickhouse
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Columnar OLAP engine, C++20, high-performance systems. Dedicated EMEA remote team."
 
@@ -225,7 +225,7 @@ companies:
     category: "Cloud Native & Data Platform"
     ats: ashby
     board: supabase
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Open source cloud platform, Postgres, Go, containers, microVMs. 100% remote worldwide."
 
@@ -235,7 +235,7 @@ companies:
     category: "Networking & Security"
     ats: greenhouse
     board: tailscale
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "WireGuard mesh networking, Go, Linux network stack. 100% remote (Europe/US)."
 
@@ -245,7 +245,7 @@ companies:
     category: "Observability & Error Tracing"
     ats: ashby
     board: sentry
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     allow_austria: true
     notes: "Crash symbolication, native DWARF/ELF inspection, Rust, tracing. Vienna hub & Remote in Europe."
@@ -256,7 +256,7 @@ companies:
     category: "Cloud Storage & Infrastructure"
     ats: greenhouse
     board: backblaze
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "B2 Cloud Storage, Storage Pods, ZFS/ext4, distributed storage. US/LATAM/Europe DC."
 
@@ -266,7 +266,7 @@ companies:
     category: "Database & Cloud Infrastructure"
     ats: ashby
     board: percona
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Open source DB (PostgreSQL, MySQL, MongoDB), Go, Linux. 100% remote pioneer."
 
@@ -276,7 +276,7 @@ companies:
     category: "Enterprise Linux & HPC"
     ats: greenhouse
     board: ciq
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Rocky Linux commercial sponsor, Apptainer/Singularity, Linux kernel live patching. 100% remote."
 
@@ -286,7 +286,7 @@ companies:
     category: "Linux Kernel Security & Live Patching"
     ats: workable
     board: tuxcare
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "KernelCare live patching, AlmaLinux foundation, extended lifecycle support. 100% remote."
 
@@ -296,7 +296,7 @@ companies:
     category: "Linux OS & Web Hosting"
     ats: workable
     board: imachines
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "CloudLinux OS, AlmaLinux parent company, live patching, multi-tenant kernel. 100% remote."
 
@@ -306,7 +306,7 @@ companies:
     category: "Workflow Automation & Fair-Code"
     ats: ashby
     board: n8n
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Fair-code workflow automation engine, TypeScript/Node, Berlin HQ & Remote Europe."
 
@@ -316,7 +316,7 @@ companies:
     category: "AI Cloud & GPU Infrastructure"
     ats: greenhouse
     board: nebius
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "AI-centric cloud and GPU clusters, NVIDIA H100/H200, remote in 30 European countries."
 
@@ -326,7 +326,7 @@ companies:
     category: "AI Voice & Audio"
     ats: ashby
     board: elevenlabs
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "AI voice and audio models. Remote across Europe."
 
@@ -338,7 +338,7 @@ companies:
     board: crowdstrike
     site: crowdstrikecareers
     sub_domain: wd5
-    entity_in_italy: true
+    entity_in_home_country: true
     eor_supported: true
     notes: "Crowdstrike Italy S.r.l. Falcon platform, kernel/systems, Go/C++."
 
@@ -350,7 +350,7 @@ companies:
     board: nvidia
     site: NVIDIAExternalCareerSite
     sub_domain: wd5
-    entity_in_italy: true
+    entity_in_home_country: true
     eor_supported: true
     notes: "Nvidia Italia S.r.l. Accelerated computing, Linux drivers, CUDA, networking."
 
@@ -360,7 +360,7 @@ companies:
     category: "Browser & Open Source"
     ats: greenhouse
     board: mozilla
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Firefox, Rust, systems engineering, distributed infrastructure. Remote in EU/UK."
 
@@ -370,7 +370,7 @@ companies:
     category: "Crypto & Trading Infrastructure"
     ats: ashby
     board: kraken.com
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Crypto exchange platform, high throughput, distributed backend. Remote across Europe."
 
@@ -380,7 +380,7 @@ companies:
     category: "Stablecoin & Financial Systems"
     ats: recruitee
     board: tether
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Stablecoin issuer, high performance financial infrastructure. Remote worldwide."
 
@@ -390,7 +390,7 @@ companies:
     category: "Fintech & Payments"
     ats: greenhouse
     board: affirm
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Payments and BNPL infrastructure. Remote in Europe (UK, Spain, Poland, etc.)."
 
@@ -400,7 +400,7 @@ companies:
     category: "Global Payroll & HR Infrastructure"
     ats: deel
     board: deel
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Global payroll, compliance, fintech platform. 100% remote pioneer."
 
@@ -410,7 +410,7 @@ companies:
     category: "Health Insurance & Platform"
     ats: ashby
     board: alan
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Digital health insurance platform. Remote in France, Spain, Belgium, Europe."
 
@@ -420,7 +420,7 @@ companies:
     category: "Process Orchestration & Distributed Systems"
     ats: ashby
     board: camunda
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Zeebe distributed workflow engine, Go/Java, Kubernetes. Remote across Europe."
 
@@ -430,7 +430,7 @@ companies:
     category: "Kubernetes & Cloud Cost Automation"
     ats: greenhouse
     board: castaigroupinc
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Kubernetes automation, cloud cost optimization, Go, eBPF. Remote across Europe."
 
@@ -440,7 +440,7 @@ companies:
     category: "Cloud Security & Zero Trust"
     ats: greenhouse
     board: zscaler
-    entity_in_italy: true
+    entity_in_home_country: true
     eor_supported: true
     notes: "Zscaler Italy S.r.l. Cloud security, distributed proxy, high throughput networking."
 
@@ -450,7 +450,7 @@ companies:
     category: "Business Banking & Financial Platform"
     ats: greenhouse
     board: tide
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Business financial platform, microservices, cloud infra. Remote across Europe/UK."
 
@@ -460,7 +460,7 @@ companies:
     category: "Foundation Models & AI Systems"
     ats: ashby
     board: mistral.ai
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Open-weight frontier LLMs, GPU cluster infrastructure, high performance inference."
 
@@ -470,7 +470,7 @@ companies:
     category: "Device Intelligence & Anti-Fraud"
     ats: greenhouse
     board: fingerprint
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Browser fingerprinting, device intelligence, edge computing. 100% remote worldwide."
 
@@ -480,7 +480,7 @@ companies:
     category: "Payments Infrastructure"
     ats: ashby
     board: primer.io
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Unified payments infrastructure, distributed systems. Remote across Europe."
 
@@ -490,7 +490,7 @@ companies:
     category: "Wealth Management & Financial Data"
     ats: greenhouse
     board: addepar1
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Financial calculation engines, big data platforms. Remote in UK and Europe."
 
@@ -500,7 +500,7 @@ companies:
     category: "AI Research & Data Platform"
     ats: greenhouse
     board: prolific
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Platform for human data in AI and scientific research. Remote in UK/Europe."
 
@@ -510,6 +510,6 @@ companies:
     category: "Energy Trading & Infrastructure"
     ats: ashby
     board: tem
-    entity_in_italy: false
+    entity_in_home_country: false
     eor_supported: true
     notes: "Renewable energy transactions, real-time energy trading platform. Remote UK/Europe."

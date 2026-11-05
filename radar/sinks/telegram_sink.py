@@ -101,8 +101,8 @@ class TelegramSink(BaseSink):
 
         eligible_jobs = []
         for j in jobs:
-            # Drop jobs locked to foreign EU countries that don't hire in Italy
-            if any("loc:eu_no_italy" in t for t in j.tags):
+            # Drop jobs locked to foreign EU countries that don't hire in the configured country
+            if any("loc:foreign_restriction" in t for t in j.tags):
                 continue
 
             if j.score >= min_score or (j.salary.norm_max_eur and j.salary.norm_max_eur >= min_salary):
