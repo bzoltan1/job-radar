@@ -6,7 +6,7 @@ from radar.models import Job, PipelineContext, RawJob
 from radar.pipeline.base import PipelineStage, StageResult
 
 B2B_RE = re.compile(
-    r"\b(b2b|contractor only|independent contractor|freelance|vat number|partita iva)\b",
+    r"\b(b2b|contractor only|independent contractor|freelance|freelancer|vat number|partita iva|corp-to-corp|c2c|1099 contractor)\b",
     re.IGNORECASE,
 )
 
@@ -19,11 +19,11 @@ class ContractStage(PipelineStage):
         return "contract_stage"
 
     def process(self, raw_job: RawJob, job: Job, context: PipelineContext) -> StageResult:
-        content = raw_job.content or ""
         company = context.target
+        full_text = f"{raw_job.title} {raw_job.content or ''}"
 
         # Hard contract check (no B2B)
-        if B2B_RE.search(content):
+        if B2B_RE.search(full_text):
             return StageResult(should_continue=False)
 
         score_delta = 0

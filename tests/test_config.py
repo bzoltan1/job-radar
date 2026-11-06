@@ -15,9 +15,11 @@ from radar.config import (
 )
 from radar.db import get_db
 from radar.models import CompanyTarget, Job, PipelineContext, RawJob
+from radar.pipeline.contract import ContractStage
 from radar.pipeline.freshness import FreshnessStage
 from radar.pipeline.location import LocationStage
 from radar.pipeline.profile import evaluate_profile
+from radar.pipeline.salary import SalaryStage
 
 
 class TestConfigAndEnvironment(unittest.TestCase):
@@ -61,6 +63,45 @@ class TestConfigAndEnvironment(unittest.TestCase):
         self.assertIn("low", tiers)
         self.assertGreater(tiers["high"], tiers["low"])
 
+    def test_salary_stage_thresholds(self):
+        stage = SalaryStage()
+        ctx = PipelineContext(target=CompanyTarget(id="test", name="Test"))
+
+        # Job matching baseline 85k exactly -> should receive positive bonus (+15), not penalty
+        raw_85 = RawJob(id="1", company_id="test", title="Dev", location="Remote", url="", content="€85,000 - €95,000")
+        job_85 = Job(id="1", company_id="test", title="Dev", location="Remote", url="")
+        res_85 = stage.process(raw_85, job_85, ctx)
+        self.assertEqual(res_85.score_delta, 15)
+
+        # Job below 85k baseline (e.g. 70k) -> should receive penalty (-10)
+        raw_70 = RawJob(id="2", company_id="test", title="Dev", location="Remote", url="", content="€60,000 - €70,000")
+        job_70 = Job(id="2", company_id="test", title="Dev", location="Remote", url="")
+        res_70 = stage.process(raw_70, job_70, ctx)
+        self.assertEqual(res_70.score_delta, -10)
+
+    def test_contract_stage_drops_b2b(self):
+        stage = ContractStage()
+        target = CompanyTarget(id="test", name="Test", tier="scaleup")
+        ctx = PipelineContext(target=target)
+
+        # Standard role passes
+        raw_perm = RawJob(id="p1", company_id="test", title="Staff Engineer", location="Remote", url="", content="Full-time permanent role")
+        job_perm = Job(id="p1", company_id="test", title="Staff Engineer", location="Remote", url="")
+        res_perm = stage.process(raw_perm, job_perm, ctx)
+        self.assertTrue(res_perm.should_continue)
+
+        # B2B in title dropped
+        raw_b2b_title = RawJob(id="b1", company_id="test", title="Staff Engineer (Freelance / B2B)", location="Remote", url="", content="Work with our team")
+        job_b2b_title = Job(id="b1", company_id="test", title="Staff Engineer (Freelance / B2B)", location="Remote", url="")
+        res_b2b_title = stage.process(raw_b2b_title, job_b2b_title, ctx)
+        self.assertFalse(res_b2b_title.should_continue)
+
+        # B2B / Partita IVA in content dropped
+        raw_b2b_content = RawJob(id="b2", company_id="test", title="Staff Engineer", location="Remote", url="", content="Requires Partita IVA or independent contractor agreement")
+        job_b2b_content = Job(id="b2", company_id="test", title="Staff Engineer", location="Remote", url="")
+        res_b2b_content = stage.process(raw_b2b_content, job_b2b_content, ctx)
+        self.assertFalse(res_b2b_content.should_continue)
+
     def test_evaluate_profile_pitch_bullets_generic(self):
         res = evaluate_profile("eBPF Kernel Engineer", "Working on Linux kernel tracing and uprobes.")
         self.assertGreater(res.match_pct, 0)
@@ -82,6 +123,7 @@ class TestConfigAndEnvironment(unittest.TestCase):
         env_vars = {
             "CANDIDATE_COUNTRY": "Germany",
             "CANDIDATE_ALLOWED_COUNTRIES": "Austria",
+            "CANDIDATE_REMOTE_ONLY": "false",
         }
         with patch.dict(os.environ, env_vars, clear=True):
             stage = LocationStage()
@@ -96,8 +138,8 @@ class TestConfigAndEnvironment(unittest.TestCase):
             self.assertIn("loc:home_country", res_de.tags)
             self.assertTrue(job_de.is_home_direct)
 
-            raw_uk = RawJob(id="2", company_id="testcomp", title="Systems Engineer (UK only)", location="London, UK", url="")
-            job_uk = Job(id="2", company_id="testcomp", title="Systems Engineer (UK only)", location="London, UK", url="")
+            raw_uk = RawJob(id="2", company_id="testcomp", title="Systems Engineer (Remote, UK only)", location="London, UK", url="")
+            job_uk = Job(id="2", company_id="testcomp", title="Systems Engineer (Remote, UK only)", location="London, UK", url="")
             res_uk = stage.process(raw_uk, job_uk, ctx)
             self.assertTrue(res_uk.should_continue)
             self.assertEqual(res_uk.score_delta, -40)
@@ -122,6 +164,62 @@ class TestConfigAndEnvironment(unittest.TestCase):
         self.assertNotIn("loc:foreign_restriction(-40)", res.tags)
         self.assertNotIn("loc:foreign_restriction(-40)", res.tags)
         self.assertEqual(res.score_delta, 10)  # emea_remote bonus
+
+    def test_location_stage_remote_only_filters(self):
+        stage = LocationStage()
+        target = CompanyTarget(id="testcomp", name="Test Comp")
+        ctx = PipelineContext(target=target)
+
+        env_strict_remote = {
+            "CANDIDATE_COUNTRY": "Italy",
+            "CANDIDATE_ALLOWED_COUNTRIES": "Italy",
+            "CANDIDATE_REMOTE_ONLY": "true",
+            "CANDIDATE_CITY": "",
+        }
+        with patch.dict(os.environ, env_strict_remote, clear=True):
+            # Remote Italy passes
+            raw_rem = RawJob(id="r1", company_id="testcomp", title="Systems Dev", location="Remote, Italy", url="")
+            job_rem = Job(id="r1", company_id="testcomp", title="Systems Dev", location="Remote, Italy", url="")
+            res_rem = stage.process(raw_rem, job_rem, ctx)
+            self.assertTrue(res_rem.should_continue)
+
+            # Flexible Italy passes
+            raw_flex = RawJob(id="r2", company_id="testcomp", title="Systems Dev", location="Flexible - Italy", url="")
+            job_flex = Job(id="r2", company_id="testcomp", title="Systems Dev", location="Flexible - Italy", url="")
+            res_flex = stage.process(raw_flex, job_flex, ctx)
+            self.assertTrue(res_flex.should_continue)
+
+            # On-site / City-bound in Milan (different city, no remote keyword) dropped
+            raw_milan = RawJob(id="r3", company_id="testcomp", title="Data Center Tech", location="IT, Milan, Italy", url="")
+            job_milan = Job(id="r3", company_id="testcomp", title="Data Center Tech", location="IT, Milan, Italy", url="")
+            res_milan = stage.process(raw_milan, job_milan, ctx)
+            self.assertFalse(res_milan.should_continue)
+
+            # Hybrid in Rome dropped
+            raw_rome_hybrid = RawJob(id="r4", company_id="testcomp", title="Engineer (Hybrid)", location="Rome, Italy", url="")
+            job_rome_hybrid = Job(id="r4", company_id="testcomp", title="Engineer (Hybrid)", location="Rome, Italy", url="")
+            res_rome_hybrid = stage.process(raw_rome_hybrid, job_rome_hybrid, ctx)
+            self.assertFalse(res_rome_hybrid.should_continue)
+
+        # With specific city allowed:
+        env_city_remote = {
+            "CANDIDATE_COUNTRY": "Italy",
+            "CANDIDATE_ALLOWED_COUNTRIES": "Italy",
+            "CANDIDATE_REMOTE_ONLY": "true",
+            "CANDIDATE_CITY": "Milan",
+        }
+        with patch.dict(os.environ, env_city_remote, clear=True):
+            # Milan hybrid is accepted because it matches candidate home city
+            raw_milan_hyb = RawJob(id="r5", company_id="testcomp", title="Dev (Hybrid)", location="Milan, Italy", url="")
+            job_milan_hyb = Job(id="r5", company_id="testcomp", title="Dev (Hybrid)", location="Milan, Italy", url="")
+            res_milan_hyb = stage.process(raw_milan_hyb, job_milan_hyb, ctx)
+            self.assertTrue(res_milan_hyb.should_continue)
+
+            # Rome hybrid is dropped because it's a different city
+            raw_rome_hyb = RawJob(id="r6", company_id="testcomp", title="Dev (Hybrid)", location="Rome, Italy", url="")
+            job_rome_hyb = Job(id="r6", company_id="testcomp", title="Dev (Hybrid)", location="Rome, Italy", url="")
+            res_rome_hyb = stage.process(raw_rome_hyb, job_rome_hyb, ctx)
+            self.assertFalse(res_rome_hyb.should_continue)
 
     def test_freshness_unparseable_date_is_neutral(self):
         stage = FreshnessStage()

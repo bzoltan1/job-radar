@@ -128,11 +128,11 @@ class SalaryStage(PipelineStage):
         elif norm >= mid:
             score_delta += 25
             tags.append(f"pay:{salary_info.display}(>{mid // 1000}k)")
-        elif norm > low:
+        elif norm >= low:
             score_delta += 15
-            tags.append(f"pay:{salary_info.display}(>{low // 1000}k)")
-        elif 0 < norm <= low:
+            tags.append(f"pay:{salary_info.display}(>={low // 1000}k)")
+        elif 0 < norm < low:
             score_delta -= 10
-            tags.append(f"pay:{salary_info.display}(<={low // 1000}k)")
+            tags.append(f"pay:{salary_info.display}(<{low // 1000}k)")
 
         return StageResult(should_continue=True, score_delta=score_delta, tags=tags)

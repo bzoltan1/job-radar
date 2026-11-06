@@ -96,6 +96,8 @@ def get_candidate_info() -> Dict[str, Any]:
         "allowed_locations": cand.get("allowed_locations", ["Austria"]),
         "contract_preference": cand.get("contract_preference", "Employee contract"),
         "website": cand.get("website", ""),
+        "remote_only": cand.get("remote_only", False),
+        "city": cand.get("city", ""),
     }
 
 
@@ -111,7 +113,7 @@ def get_salary_expectations() -> Dict[str, int]:
 
 
 def get_location_config() -> Dict[str, Any]:
-    """Retrieve candidate target country and allowed secondary locations."""
+    """Retrieve candidate target country, allowed secondary locations, and remote preferences."""
     cand = get_candidate_info()
     home = (
         os.environ.get("CANDIDATE_COUNTRY")
@@ -131,9 +133,23 @@ def get_location_config() -> Dict[str, Any]:
         else:
             allowed = []
 
+    env_remote = os.environ.get("CANDIDATE_REMOTE_ONLY")
+    if env_remote is not None:
+        remote_only = env_remote.strip().lower() in ("true", "1", "yes")
+    else:
+        remote_only = bool(cand.get("remote_only", False))
+
+    city = (
+        os.environ.get("CANDIDATE_CITY")
+        or cand.get("city", "")
+    ).strip()
+
     return {
         "home_country": home,
+        "primary_country": home,
         "allowed_countries": allowed,
+        "remote_only": remote_only,
+        "city": city,
     }
 
 

@@ -8,7 +8,7 @@ from radar.models import Job, PipelineContext, RawJob
 from radar.pipeline.base import PipelineStage, StageResult
 
 COUNTRY_SYNONYMS = {
-    "italy": ("italy", "italia", "milan", "milano", "rome", "roma", "turin", "torino", "bologna", "naples", "napoli"),
+    "italy": ("italy", "italia", "milan", "milano", "rome", "roma", "turin", "torino", "bologna", "naples", "napoli", "asti", "genoa", "genova", "florence", "firenze", "padua", "padova", "verona", "trieste", "venice", "venezia", "pisa", "trento", "bolzano", "como"),
     "austria": ("austria", "vienna", "wien", "linz", "graz", "salzburg", "innsbruck"),
     "germany": ("germany", "munich", "münchen", "berlin", "frankfurt", "deutschland", "hamburg", "cologne", "köln", "stuttgart"),
     "france": ("france", "paris", "nantes", "grenoble", "montpellier", "lyon", "bordeaux", "toulouse"),
@@ -36,8 +36,14 @@ COUNTRY_SYNONYMS = {
     "united states": ("united states", "usa", "us", "new york", "california", "san francisco", "austin", "texas", "seattle"),
 }
 
+ITALIAN_CITIES = {
+    "milan", "milano", "rome", "roma", "turin", "torino", "bologna", "naples", "napoli",
+    "asti", "genoa", "genova", "florence", "firenze", "padua",
+    "padova", "verona", "trieste", "venice", "venezia", "pisa", "trento", "bolzano", "como",
+}
+
 LOCATION_EMEA_REMOTE_RE = re.compile(
-    r"\b(emea|europe|worldwide|anywhere|global)\b",
+    r"\b(emea|europe|worldwide|anywhere|global|flexible)\b",
     re.IGNORECASE,
 )
 
@@ -84,6 +90,8 @@ class LocationStage(PipelineStage):
         loc_cfg = get_location_config()
         home_country = loc_cfg["home_country"].lower()
         allowed_countries = [c.lower() for c in loc_cfg.get("allowed_countries", ["Austria"])]
+        remote_only = loc_cfg.get("remote_only", False)
+        candidate_city = loc_cfg.get("city", "").lower().strip()
 
         home_re = get_country_regex(home_country)
         is_direct_home = bool(home_re.search(location)) or bool(home_re.search(title))
@@ -102,11 +110,35 @@ class LocationStage(PipelineStage):
             if austria_re.search(location) or austria_re.search(title):
                 is_direct_allowed = True
 
-        # Hybrid / On-site check: must match home or allowed country directly
-        is_hybrid = bool(re.search(r"\bhybrid\b", location, re.IGNORECASE))
-        is_onsite = bool(re.search(r"\b(in-office|on-?site)\b", location, re.IGNORECASE))
-        if (is_hybrid or is_onsite) and not (is_direct_home or is_direct_allowed):
-            return StageResult(should_continue=False)
+        # Check remote indicators
+        is_title_geo = bool(re.search(r"\b(emea|europe)\b", title, re.IGNORECASE))
+        is_loc_geo = bool(LOCATION_EMEA_REMOTE_RE.search(location)) or (location.strip().lower() in ("remote", "distributed"))
+        is_remote_keyword = bool(re.search(r"\b(remote|distributed|telecommute|work from home|flexible)\b", f"{title} {location}", re.IGNORECASE))
+        is_content_remote = bool(re.search(r"\b(100% remote|fully remote|work from anywhere|remote within italy)\b", raw_job.content or "", re.IGNORECASE))
+        is_remote = is_title_geo or is_loc_geo or is_remote_keyword or is_content_remote
+
+        # Hybrid / On-site check
+        is_hybrid = bool(re.search(r"\bhybrid\b", f"{title} {location}", re.IGNORECASE))
+        is_onsite = bool(re.search(r"\b(in-office|on-?site)\b", f"{title} {location}", re.IGNORECASE))
+        matches_home_city = bool(candidate_city and re.search(rf"\b{re.escape(candidate_city)}\b", location, re.IGNORECASE))
+
+        loc_lower = location.lower()
+        has_different_city = any(
+            bool(re.search(rf"\b{c}\b", loc_lower))
+            for c in ITALIAN_CITIES
+            if c != candidate_city
+        )
+
+        if remote_only:
+            # 1. Any hybrid or on-site role in another city (or any city if home city unset) is dropped
+            if (is_hybrid or is_onsite) and not matches_home_city:
+                return StageResult(should_continue=False)
+            # 2. If not explicitly remote, any city-bound role in a different city is dropped
+            if not is_remote and (has_different_city or not matches_home_city):
+                return StageResult(should_continue=False)
+        else:
+            if (is_hybrid or is_onsite) and not (is_direct_home or is_direct_allowed):
+                return StageResult(should_continue=False)
 
         # Disqualify non-EU positions (unless candidate is in that country or job is EMEA/global)
         is_non_eu = bool(NON_EU_DISQUALIFY_RE.search(location)) or bool(re.search(r"(?:\|\s*|\(\s*|\b-\s*|\b—\s*)(us\b|usa\b|united states|canada|india|australia|singapore|japan|apac|americas|amer\b|latam)(?:\s*\||\s*\)|\s*-|\s*—|\s*$)", title, re.IGNORECASE))
@@ -115,12 +147,7 @@ class LocationStage(PipelineStage):
         if is_non_eu and not (is_direct_home or is_direct_allowed or has_global_or_emea):
             return StageResult(should_continue=False)
 
-        # Check remote indicators
-        is_title_geo = bool(re.search(r"\b(emea|europe)\b", title, re.IGNORECASE))
-        is_loc_geo = bool(LOCATION_EMEA_REMOTE_RE.search(location)) or (location.strip().lower() in ("remote", "distributed"))
-        is_remote_keyword = bool(re.search(r"\b(remote|distributed|telecommute|work from home)\b", f"{title} {location}", re.IGNORECASE))
-
-        if not (is_direct_home or is_direct_allowed or is_title_geo or is_loc_geo or is_remote_keyword):
+        if not (is_direct_home or is_direct_allowed or is_remote):
             return StageResult(should_continue=False)
 
         # Detect single-country foreign lock
@@ -133,7 +160,7 @@ class LocationStage(PipelineStage):
 
         if is_direct_home or is_direct_allowed:
             pass
-        elif len(foreign_restrictions) > 0 and (is_remote_keyword or is_loc_geo or is_title_geo):
+        elif len(foreign_restrictions) > 0 and is_remote:
             is_foreign_single_country = True
         elif is_title_geo or is_loc_geo:
             is_emea_remote = True
