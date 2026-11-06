@@ -43,7 +43,7 @@ ITALIAN_CITIES = {
 }
 
 LOCATION_EMEA_REMOTE_RE = re.compile(
-    r"\b(emea|europe|worldwide|anywhere|global|flexible)\b",
+    r"\b(emea|europe|worldwide|anywhere|global)\b",
     re.IGNORECASE,
 )
 
