@@ -34,7 +34,7 @@ SYSTEMS_TITLE_RE = re.compile(
     r"\b(systems|platform|platform\s+eng(?:ineer(?:ing)?)?|devops|linux|kernel|ebpf|bpf|"
     r"infrastructure|infra|sre|site\s+reliability|production\s+eng(?:ineer(?:ing)?)?|"
     r"distributed|runtime|virtualization|container|core\s+os|low-level|storage|networking|"
-    r"cloud\s+platform|kubernetes|cloud\s+infrastructure)\b",
+    r"cloud\s+platform|kubernetes|cloud\s+infrastructure|openstack|automation|qe\b|quality\s+eng(?:ineer(?:ing)?)?)\b",
     re.IGNORECASE,
 )
 
@@ -44,7 +44,7 @@ DEVOPS_PLATFORM_SRE_RE = re.compile(
 )
 
 TECH_STACK_RE = re.compile(
-    r"\b(golang|go\b|c\b|c\+\+|rust|python|cloud|aws|linux|ebpf|systemd|kernel|kubernetes|docker|perf|syscall|posix)\b",
+    r"\b(golang|go\b|c\b|c\+\+|rust|python|crystal|cloud|aws|azure|openstack|ansible|linux|ebpf|systemd|kernel|kubernetes|docker|podman|kvm|qemu|perf|syscall|posix)\b",
     re.IGNORECASE,
 )
 

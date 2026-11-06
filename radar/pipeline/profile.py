@@ -104,6 +104,30 @@ DEFAULT_SKILL_MATRIX = [
         "Leverage experience with cloud-native infrastructure, distributed systems, and cloud platforms.",
     ),
     (
+        r"\bansible\b|\bconfiguration management\b",
+        "Ansible & Fleet Automation",
+        25,
+        "Reference Red Hat Certified Specialist in Ansible Automation credentials and fleet management across thousands of Linux nodes.",
+    ),
+    (
+        r"\bopenstack\b|\bhybrid cloud\b|\biaas\b|\bpaas\b",
+        "OpenStack & Hybrid Cloud",
+        20,
+        "Leverage Certified OpenStack Administrator (COA) credentials and hands-on multi-datacenter private cloud orchestration.",
+    ),
+    (
+        r"\brhel\b|\bsles\b|\bopensuse\b|\brhce\b|\bpam\b|\bpluggable authentication\b",
+        "Enterprise Linux & PAM Architecture",
+        20,
+        "Highlight deep dual Red Hat RHCE and <employer> SCE certifications and published expertise in the Linux PAM subsystem.",
+    ),
+    (
+        r"\bcrystal\b",
+        "Crystal Systems Language",
+        15,
+        "Reference role as language community contributor and author of open-source koans.",
+    ),
+    (
         r"\brpm\b|\bpackaging\b|\bobs\b",
         "Linux Packaging & Build Services",
         15,
