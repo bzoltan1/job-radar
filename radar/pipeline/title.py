@@ -44,7 +44,7 @@ DEVOPS_PLATFORM_SRE_RE = re.compile(
 )
 
 TECH_STACK_RE = re.compile(
-    r"\b(golang|go\b|c\b|c\+\+|linux|ebpf|systemd|kernel|kubernetes|docker|perf|syscall|posix)\b",
+    r"\b(golang|go\b|c\b|c\+\+|rust|python|cloud|aws|linux|ebpf|systemd|kernel|kubernetes|docker|perf|syscall|posix)\b",
     re.IGNORECASE,
 )
 

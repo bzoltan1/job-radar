@@ -92,6 +92,18 @@ DEFAULT_SKILL_MATRIX = [
         "Highlight memory-safe systems programming and high-performance services in Rust.",
     ),
     (
+        r"\bpython\b|\bpytest\b|\bpython3\b",
+        "Python Systems & Automation",
+        20,
+        "Highlight Python engineering for systems automation, test harnesses, and tooling.",
+    ),
+    (
+        r"\bcloud\b|\baws\b|\bgcp\b|\bazure\b|\bcloud-native\b",
+        "Cloud Platform & Infrastructure",
+        20,
+        "Leverage experience with cloud-native infrastructure, distributed systems, and cloud platforms.",
+    ),
+    (
         r"\brpm\b|\bpackaging\b|\bobs\b",
         "Linux Packaging & Build Services",
         15,

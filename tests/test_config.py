@@ -109,6 +109,13 @@ class TestConfigAndEnvironment(unittest.TestCase):
         for b in res.pitch_bullets:
             self.assertIsInstance(b, str)
 
+    def test_evaluate_profile_python_and_cloud(self):
+        res = evaluate_profile("Cloud Platform Engineer", "Developing distributed cloud infrastructure with Python and AWS.")
+        self.assertGreater(res.match_pct, 0)
+        matched_str = " ".join(res.matched_skills)
+        self.assertIn("Python", matched_str)
+        self.assertIn("Cloud", matched_str)
+
     def test_location_config_from_env(self):
         env_vars = {
             "CANDIDATE_COUNTRY": "Germany",
