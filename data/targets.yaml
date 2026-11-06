@@ -513,3 +513,133 @@ companies:
     entity_in_home_country: false
     eor_supported: true
     notes: "Renewable energy transactions, real-time energy trading platform. Remote UK/Europe."
+
+  - id: tigera
+    name: "Tigera"
+    tier: enterprise_infra
+    category: "eBPF Networking & Security"
+    ats: greenhouse
+    board: tigera
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "Project Calico creators. eBPF dataplane, Linux networking, CNI. Remote in Europe via EOR."
+
+  - id: goteleport
+    name: "Teleport"
+    tier: scaleup
+    category: "Infrastructure Access & Security"
+    ats: ashby
+    board: goteleport
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "Zero-trust infrastructure access. Linux PAM, eBPF audit logging, Go. Remote in Europe via EOR."
+
+  - id: cribl
+    name: "Cribl"
+    tier: enterprise_infra
+    category: "Observability & Telemetry Pipelines"
+    ats: greenhouse
+    board: cribl
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "Cribl Stream, telemetry pipelines, distributed data processing. Remote-first in Europe via EOR."
+
+  - id: kong
+    name: "Kong"
+    tier: enterprise_infra
+    category: "Cloud Connectivity & API Gateway"
+    ats: ashby
+    board: kong
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "Cloud API gateway, Envoy/NGINX data plane, Lua/Go/Rust. Remote across Europe."
+
+  - id: honeycomb
+    name: "Honeycomb"
+    tier: enterprise_infra
+    category: "Observability & Distributed Tracing"
+    ats: greenhouse
+    board: honeycomb
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "High-cardinality observability & distributed tracing pioneers. Remote in Europe via EOR."
+
+  - id: upbound
+    name: "Upbound"
+    tier: scaleup
+    category: "Control Planes & Cloud Native Infra"
+    ats: greenhouse
+    board: upbound
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "Crossplane creators, cloud-native control planes, Kubernetes, Go. 100% remote via EOR."
+
+  - id: vultr
+    name: "Vultr"
+    tier: enterprise_infra
+    category: "Cloud Infrastructure & Bare Metal"
+    ats: ashby
+    board: vultr
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "Global cloud platform, bare-metal orchestration, Linux virtualization, QEMU/KVM. Remote."
+
+  - id: motherduck
+    name: "MotherDuck"
+    tier: scaleup
+    category: "Serverless Analytics & Data Systems"
+    ats: ashby
+    board: motherduck
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "Serverless DuckDB cloud analytics, C++/Rust/Go, data engines. Remote in Europe/US via EOR."
+
+  - id: scaleway
+    name: "Scaleway"
+    tier: enterprise_infra
+    category: "European Cloud Infrastructure"
+    ats: lever
+    board: scaleway
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "European cloud provider (Iliad group). Bare metal, virtualization, Linux kernel. Remote in Europe."
+
+  - id: starburst
+    name: "Starburst"
+    tier: enterprise_infra
+    category: "Distributed SQL & Big Data"
+    ats: greenhouse
+    board: starburst
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "Enterprise Trino distributed query engine, high-performance data systems. Remote in Europe."
+
+  - id: yugabyte
+    name: "Yugabyte"
+    tier: scaleup
+    category: "Distributed SQL & Database Systems"
+    ats: greenhouse
+    board: yugabyte
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "Distributed PostgreSQL, C++, Raft consensus, storage engines. Remote in Europe via EOR."
+
+  - id: influxdata
+    name: "InfluxData"
+    tier: scaleup
+    category: "Time Series DB & Data Systems"
+    ats: ashby
+    board: influxdata
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "InfluxDB 3.0, Apache Arrow DataFusion, Rust/Go, time-series storage. Remote-first via EOR."
+
+  - id: mattermost
+    name: "Mattermost"
+    tier: scaleup
+    category: "Open Source Platform & Collaboration"
+    ats: greenhouse
+    board: mattermost
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "Open-source developer platform, Go backend, high concurrency. 100% remote in Europe via EOR."
