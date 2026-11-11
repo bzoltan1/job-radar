@@ -20,7 +20,10 @@ Matching is deliberately forgiving so keys can be written as single tokens:
 * separators are optional: ``opensource`` matches "open source"/"open-source",
   and a key written with separators ("common criteria") matches the joined form;
 * light inflection: plural, -ed/-ing and -y/-ies variants of the key
-  (``releasing`` matches "release", "released", "releases").
+  (``releasing`` matches "release", "released", "releases");
+* a trailing ``*`` makes the last token a prefix, for words with many
+  variants: ``virtuali*`` matches "virtualisation", "virtualization",
+  "virtualised".
 
 Scoring:
 
@@ -82,11 +85,16 @@ def _spell(chunk: str, token: Optional[str] = None) -> str:
 
 def keyword_pattern(key: str) -> Optional[str]:
     """Build a tolerant whole-word regex for a ``scoring_weights`` key."""
-    tokens = [t for t in re.split(r"[\s\-_/.]+", str(key).strip().lower()) if t]
+    key = str(key).strip().lower()
+    prefix = key.endswith("*")
+    tokens = [t for t in re.split(r"[\s\-_/.]+", key.rstrip("*")) if t]
     if not tokens:
         return None
     *head, last = tokens
-    stem, suffix = _inflect(last) if last.isalpha() else (last, "")
+    if prefix:
+        stem, suffix = last, r"\w*"
+    else:
+        stem, suffix = _inflect(last) if last.isalpha() else (last, "")
     parts = [_spell(t) for t in head] + [_spell(stem, last) + suffix]
     body = _SEP.join(parts)
     left = r"\b" if re.match(r"\w", tokens[0][0]) else r"(?<!\w)"

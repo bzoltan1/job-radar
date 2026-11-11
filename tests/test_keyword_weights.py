@@ -46,6 +46,13 @@ class TestKeywordPattern(unittest.TestCase):
         self.assertTrue(_matches("c++", "C++ developer"))
         self.assertTrue(_matches("ci/cd", "CI/CD pipelines"))
 
+    def test_trailing_star_is_prefix_match(self):
+        for text in ("virtualisation", "Virtualization", "virtualised"):
+            self.assertTrue(_matches("virtuali*", text), text)
+        self.assertTrue(_matches("certif*", "Certifications lead"))
+        self.assertTrue(_matches("open source*", "open-sourced components"))
+        self.assertFalse(_matches("certif*", "recertify"))
+        self.assertFalse(_matches("kubernet*", "kubectl"))
 
 class TestKeywordScoring(unittest.TestCase):
     def test_no_weights_no_score(self):
