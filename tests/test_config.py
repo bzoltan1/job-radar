@@ -5,13 +5,16 @@ import unittest
 from unittest.mock import patch
 
 from radar.config import (
+    find_tech_matches,
     get_candidate_info,
     get_location_config,
     get_obsidian_vault_path,
     get_salary_expectations,
+    get_tech_stack_regex,
     get_telegram_config,
     load_dotenv_if_present,
     load_profile,
+    load_tech_stack,
 )
 from radar.db import get_db
 from radar.models import CompanyTarget, Job, PipelineContext, RawJob
@@ -19,7 +22,9 @@ from radar.pipeline.contract import ContractStage
 from radar.pipeline.freshness import FreshnessStage
 from radar.pipeline.location import LocationStage
 from radar.pipeline.profile import evaluate_profile
+from radar.pipeline.role import RoleSeniorityStage
 from radar.pipeline.salary import SalaryStage
+from radar.pipeline.title import TitleFilterStage
 
 
 class TestConfigAndEnvironment(unittest.TestCase):
@@ -245,6 +250,54 @@ class TestConfigAndEnvironment(unittest.TestCase):
         self.assertIn("idx_jobs_active_score", index_names)
         self.assertIn("idx_jobs_company", index_names)
         self.assertIn("idx_jobs_salary", index_names)
+
+    def test_tech_stack_loading_and_matching(self):
+        tech_list = load_tech_stack()
+        self.assertGreater(len(tech_list), 10)
+        matches = find_tech_matches("We build cloud platform systems in C, Python, and Rust.")
+        self.assertEqual(matches, ["c", "cloud", "python", "rust"])
+
+    def test_role_seniority_stage_tech_tagging(self):
+        stage = RoleSeniorityStage()
+        target = CompanyTarget(id="testcomp", name="Test Comp")
+        ctx = PipelineContext(target=target)
+
+        raw = RawJob(
+            id="t1",
+            company_id="testcomp",
+            title="Systems Engineer",
+            location="Remote",
+            url="",
+            content="Working on cloud automation with Python, Rust, and low-level C internals.",
+        )
+        job = Job(id="t1", company_id="testcomp", title=raw.title, location=raw.location, url="")
+        res = stage.process(raw, job, ctx)
+        self.assertTrue(res.should_continue)
+        self.assertIn("tech:c,cloud,python,rust", res.tags)
+        # 30 (systems) + 20 (4 tech matches * 5) = 50
+        self.assertEqual(res.score_delta, 50)
+
+    def test_tech_stack_word_boundaries(self):
+        matches = find_tech_matches("Monitoring system status and focus with cargo economic tools.")
+        self.assertNotIn("c", matches)
+        self.assertNotIn("go", matches)
+
+    def test_title_filter_stage_tech_stack_pass(self):
+        stage = TitleFilterStage()
+        target = CompanyTarget(id="testcomp", name="Test Comp")
+        ctx = PipelineContext(target=target)
+
+        raw = RawJob(
+            id="tf1",
+            company_id="testcomp",
+            title="Core Platform Specialist",
+            location="Remote",
+            url="",
+            content="Heavy use of eBPF and Linux kernel tracing.",
+        )
+        job = Job(id="tf1", company_id="testcomp", title=raw.title, location=raw.location, url="")
+        res = stage.process(raw, job, ctx)
+        self.assertTrue(res.should_continue)
 
 
 if __name__ == "__main__":

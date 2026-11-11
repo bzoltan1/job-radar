@@ -1,9 +1,10 @@
 """Role seniority, systems relevance & tech stack scoring stage."""
 
 import re
+from radar.config import find_tech_matches
 from radar.models import Job, PipelineContext, RawJob
 from radar.pipeline.base import PipelineStage, StageResult
-from radar.pipeline.title import DEVOPS_PLATFORM_SRE_RE, SYSTEMS_TITLE_RE, TECH_STACK_RE
+from radar.pipeline.title import DEVOPS_PLATFORM_SRE_RE, SYSTEMS_TITLE_RE
 
 HIGH_PROFILE_SENIORITY_RE = re.compile(
     r"\b(staff|principal|lead|senior\s+staff|distinguished|head\s+of|director|architect)\b",
@@ -53,9 +54,8 @@ class RoleSeniorityStage(PipelineStage):
                 tags.append("seniority:senior")
 
         # Tech stack matches
-        matches = TECH_STACK_RE.findall(f"{title} {content}")
-        if matches:
-            unique_matches = sorted(list(set(m.lower() for m in matches)))
+        unique_matches = find_tech_matches(f"{title} {content}")
+        if unique_matches:
             score_delta += min(len(unique_matches) * 5, 25)
             tags.append(f"tech:{','.join(unique_matches[:4])}")
 

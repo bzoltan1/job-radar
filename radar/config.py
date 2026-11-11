@@ -2,7 +2,8 @@
 
 import glob
 import os
-from typing import Any, Dict, List, Optional
+import re
+from typing import Any, Dict, List, Optional, Tuple
 import yaml
 
 from radar.models import CompanyTarget
@@ -58,6 +59,14 @@ TARGETS_FILE = (
     or os.path.join(BASE_DIR, "targets.yaml")
 )
 
+TECH_STACK_FILE = (
+    os.environ.get("JOB_RADAR_TECH_STACK")
+    or (os.path.join(DATA_DIR, "tech_stack.local.yaml") if os.path.exists(os.path.join(DATA_DIR, "tech_stack.local.yaml")) else None)
+    or (os.path.join(DATA_DIR, "tech_stack.yaml") if os.path.exists(os.path.join(DATA_DIR, "tech_stack.yaml")) else None)
+    or (os.path.join(BASE_DIR, "tech_stack.yaml") if os.path.exists(os.path.join(BASE_DIR, "tech_stack.yaml")) else None)
+    or os.path.join(DATA_DIR, "tech_stack.example.yaml")
+)
+
 LEGACY_INTEL_FILE = os.path.join(BASE_DIR, "company_intel.yaml")
 
 DB_PATH = os.environ.get("JOB_RADAR_DB") or os.path.join(BASE_DIR, "jobs.db")
@@ -66,6 +75,33 @@ FEED_PATH = os.environ.get("JOB_RADAR_FEED") or os.path.join(BASE_DIR, "feed.xml
 
 _SETTINGS_CACHE: Dict[str, Any] = {"mtime": None, "data": None}
 _PROFILE_CACHE: Dict[str, Any] = {"mtime": None, "data": None}
+_TECH_STACK_CACHE: Dict[str, Any] = {"mtime": None, "data": None, "compiled": None, "regex": None}
+
+DEFAULT_TECH_STACK = [
+    {"name": "golang", "pattern": r"\b(golang|go)\b"},
+    {"name": "c", "pattern": r"\bc\b"},
+    {"name": "c++", "pattern": r"\bc\+\+"},
+    {"name": "rust", "pattern": r"\brust\b"},
+    {"name": "python", "pattern": r"\bpython\b"},
+    {"name": "crystal", "pattern": r"\bcrystal\b"},
+    {"name": "cloud", "pattern": r"\bcloud\b"},
+    {"name": "aws", "pattern": r"\baws\b"},
+    {"name": "azure", "pattern": r"\bazure\b"},
+    {"name": "openstack", "pattern": r"\bopenstack\b"},
+    {"name": "ansible", "pattern": r"\bansible\b"},
+    {"name": "linux", "pattern": r"\blinux\b"},
+    {"name": "ebpf", "pattern": r"\bebpf\b"},
+    {"name": "systemd", "pattern": r"\bsystemd\b"},
+    {"name": "kernel", "pattern": r"\bkernel\b"},
+    {"name": "kubernetes", "pattern": r"\bkubernetes\b"},
+    {"name": "docker", "pattern": r"\bdocker\b"},
+    {"name": "podman", "pattern": r"\bpodman\b"},
+    {"name": "kvm", "pattern": r"\bkvm\b"},
+    {"name": "qemu", "pattern": r"\bqemu\b"},
+    {"name": "perf", "pattern": r"\bperf\b"},
+    {"name": "syscall", "pattern": r"\bsyscall\b"},
+    {"name": "posix", "pattern": r"\bposix\b"},
+]
 
 
 def load_settings() -> dict:
@@ -100,6 +136,115 @@ def load_profile() -> dict:
             return data
     except Exception:
         return {}
+
+
+def _normalize_tech_item(item: Any) -> Optional[Tuple[str, str]]:
+    """Convert string or dict into (canonical_name, regex_pattern)."""
+    if isinstance(item, str):
+        name = item.strip().lower()
+        if not name:
+            return None
+        if name == "c":
+            return ("c", r"\bc\b")
+        if name == "go":
+            return ("go", r"\bgo\b")
+        if name in ("c++", "cpp"):
+            return ("c++", r"\bc\+\+")
+        return (name, rf"\b{re.escape(name)}\b")
+    elif isinstance(item, dict) and "name" in item:
+        name = str(item["name"]).strip().lower()
+        if not name:
+            return None
+        pat = item.get("pattern")
+        if pat:
+            return (name, pat)
+        return _normalize_tech_item(name)
+    return None
+
+
+def load_tech_stack() -> List[Dict[str, str]]:
+    """Load tracked technology keywords and patterns from tech_stack.yaml."""
+    if not TECH_STACK_FILE or not os.path.exists(TECH_STACK_FILE):
+        return list(DEFAULT_TECH_STACK)
+    try:
+        mtime = os.path.getmtime(TECH_STACK_FILE)
+        if _TECH_STACK_CACHE["mtime"] == mtime and _TECH_STACK_CACHE["data"] is not None:
+            return _TECH_STACK_CACHE["data"]
+
+        with open(TECH_STACK_FILE, "r", encoding="utf-8") as f:
+            raw = yaml.safe_load(f) or {}
+
+        items: List[Any] = []
+        if isinstance(raw, list):
+            items = raw
+        elif isinstance(raw, dict):
+            items = raw.get("tech_stack") or raw.get("technologies") or []
+
+        parsed = []
+        for it in items:
+            normalized = _normalize_tech_item(it)
+            if normalized:
+                parsed.append({"name": normalized[0], "pattern": normalized[1]})
+
+        if not parsed:
+            parsed = list(DEFAULT_TECH_STACK)
+
+        _TECH_STACK_CACHE["mtime"] = mtime
+        _TECH_STACK_CACHE["data"] = parsed
+        _TECH_STACK_CACHE["compiled"] = None
+        _TECH_STACK_CACHE["regex"] = None
+        return parsed
+    except Exception:
+        return list(DEFAULT_TECH_STACK)
+
+
+def get_compiled_tech_stack() -> List[Tuple[str, re.Pattern]]:
+    """Return compiled (canonical_name, regex) pairs for each tracked tech."""
+    load_tech_stack()
+    if _TECH_STACK_CACHE["compiled"] is not None:
+        return _TECH_STACK_CACHE["compiled"]
+
+    tech_list = _TECH_STACK_CACHE["data"] or DEFAULT_TECH_STACK
+    compiled = []
+    for item in tech_list:
+        try:
+            p = re.compile(item["pattern"], re.IGNORECASE)
+            compiled.append((item["name"], p))
+        except re.error:
+            p = re.compile(rf"\b{re.escape(item['name'])}\b", re.IGNORECASE)
+            compiled.append((item["name"], p))
+
+    _TECH_STACK_CACHE["compiled"] = compiled
+    return compiled
+
+
+def get_tech_stack_regex() -> re.Pattern:
+    """Return single combined regex matching any tracked technology."""
+    load_tech_stack()
+    if _TECH_STACK_CACHE["regex"] is not None:
+        return _TECH_STACK_CACHE["regex"]
+
+    compiled = get_compiled_tech_stack()
+    patterns = [p.pattern for _, p in compiled]
+    if not patterns:
+        combined = re.compile(r"(?!)")
+    else:
+        combined = re.compile(rf"(?:{'|'.join(patterns)})", re.IGNORECASE)
+
+    _TECH_STACK_CACHE["regex"] = combined
+    return combined
+
+
+def find_tech_matches(text: str) -> List[str]:
+    """Find unique canonical tech names matching in text, sorted alphabetically."""
+    if not text:
+        return []
+    compiled = get_compiled_tech_stack()
+    matches = set()
+    for name, pattern in compiled:
+        if pattern.search(text):
+            matches.add(name)
+    return sorted(list(matches))
 
 
 def get_candidate_info() -> Dict[str, Any]:
