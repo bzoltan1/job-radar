@@ -11,6 +11,12 @@ Which job titles count as a good role fit comes from the candidate profile::
         tags:                           # optional extra tags for sub-domains
           - pattern: '\\bsecurity\\b'
             tag: "domain:security"
+      - name: license_compliance
+        pattern: '\\bopen\\s+source\\s+counsel\\b'
+        weight: 30
+        override_title_exclude: true    # optional, keep titles the built-in
+                                        # exclusion list would drop (legal, counsel,
+                                        # commercial, partner, ...)
       - name: people_manager            # negative weights demote unwanted roles
         pattern: '\\bengineering\\s+manager\\b'
         weight: -15
@@ -57,15 +63,16 @@ DEFAULT_TARGET_ROLES: List[Dict] = [
 
 
 class TargetRole:
-    __slots__ = ("name", "regex", "weight", "lead_bonus", "senior_bonus", "tags")
+    __slots__ = ("name", "regex", "weight", "lead_bonus", "senior_bonus", "tags", "override_title_exclude")
 
-    def __init__(self, name, regex, weight, lead_bonus, senior_bonus, tags):
+    def __init__(self, name, regex, weight, lead_bonus, senior_bonus, tags, override_title_exclude=False):
         self.name = name
         self.regex = regex
         self.weight = weight
         self.lead_bonus = lead_bonus
         self.senior_bonus = senior_bonus
         self.tags = tags
+        self.override_title_exclude = override_title_exclude
 
 
 def _int(value, default: int) -> int:
@@ -95,6 +102,7 @@ def _parse_roles(items) -> List[TargetRole]:
             lead_bonus=_int(item.get("lead_bonus"), 20),
             senior_bonus=_int(item.get("senior_bonus"), 10),
             tags=extra,
+            override_title_exclude=bool(item.get("override_title_exclude", False)),
         ))
     return roles
 
@@ -126,6 +134,14 @@ def match_target_role(title: str, prof: Optional[dict] = None) -> Optional[Targe
     if not matched:
         return None
     return max(matched, key=lambda r: r.weight)
+
+
+def overrides_title_exclusion(title: str, prof: Optional[dict] = None) -> bool:
+    """True if a positive-weight target role opted in to bypass the built-in title exclusions."""
+    return any(
+        r.override_title_exclude and r.weight > 0 and r.regex.search(title or "")
+        for r in get_target_roles(prof)
+    )
 
 
 class RoleSeniorityStage(PipelineStage):

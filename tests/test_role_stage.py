@@ -103,3 +103,35 @@ class TestTitleFilterTargetRoles(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTitleExclusionOverride(unittest.TestCase):
+    PROFILE = {
+        "target_roles": [
+            {
+                "name": "license_compliance",
+                "pattern": r"\bopen\s+source\s+(?:counsel|legal)\b|\bcommercial\s+licensing\b",
+                "weight": 35,
+                "override_title_exclude": True,
+            },
+            {"name": "product_manager", "pattern": r"\bproduct\s+manager\b", "weight": 40},
+            {"name": "legal_demoted", "pattern": r"\bcounsel\b", "weight": -10, "override_title_exclude": True},
+        ],
+    }
+
+    def test_opted_in_role_bypasses_hard_exclusion(self):
+        with use_profile(self.PROFILE):
+            self.assertTrue(run(TitleFilterStage(), "Senior Open Source Counsel").should_continue)
+            self.assertTrue(run(TitleFilterStage(), "Commercial Licensing Manager").should_continue)
+
+    def test_other_excluded_titles_still_dropped(self):
+        with use_profile(self.PROFILE):
+            # product_manager matches but did not opt in -> "pricing" exclusion still applies
+            self.assertFalse(run(TitleFilterStage(), "Product Manager, Pricing").should_continue)
+            # negative-weight roles never bypass the exclusion
+            self.assertFalse(run(TitleFilterStage(), "Employment Counsel").should_continue)
+            self.assertFalse(run(TitleFilterStage(), "Legal Counsel").should_continue)
+
+    def test_without_profile_behaviour_unchanged(self):
+        with use_profile({}):
+            self.assertFalse(run(TitleFilterStage(), "Open Source Counsel").should_continue)
