@@ -14,16 +14,20 @@ Automated job discovery, ATS scraping, and semantic scoring engine targeting Lin
 
 ### 1. Prerequisites & Installation
 
-Clone the repository and set up a Python 3.10+ virtual environment:
+Clone the repository and install dependencies with `uv`:
 
 ```bash
 git clone https://github.com/your-username/job-radar.git
 cd job-radar
 
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+# Create virtualenv and sync dependencies
+uv sync
+
+# Run tests
+uv run pytest
 ```
+
+*(Alternatively, traditional `pip install -r requirements.txt` remains supported).*
 
 ### 2. Configure Environment (`.env`)
 

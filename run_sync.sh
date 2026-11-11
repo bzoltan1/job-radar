@@ -11,15 +11,22 @@ if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
     export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_ID}/bus"
 fi
 
-# Select python binary (prefer local venv if available)
-PYTHON_BIN="${SCRIPT_DIR}/.venv/bin/python"
-if [[ ! -x "${PYTHON_BIN}" ]]; then
-    PYTHON_BIN="$(which python3 || echo "/usr/bin/python3")"
+# Ensure local bin is in PATH (needed for systemd user services to find uv)
+export PATH="${HOME}/.local/bin:${PATH}"
+
+# Select runner: uv run preferred, fallback to venv or system python
+UV_BIN="$(command -v uv || echo "${HOME}/.local/bin/uv")"
+if [[ -x "${UV_BIN}" ]]; then
+    PYTHON_CMD=("${UV_BIN}" "run" "--no-dev" "python")
+elif [[ -x "${SCRIPT_DIR}/.venv/bin/python" ]] && "${SCRIPT_DIR}/.venv/bin/python" -c "import yaml" &>/dev/null; then
+    PYTHON_CMD=("${SCRIPT_DIR}/.venv/bin/python")
+else
+    PYTHON_CMD=("$(command -v python3 || echo "/usr/bin/python3")")
 fi
 
 echo "=== [$(date '+%Y-%m-%d %H:%M:%S')] Starting Job Radar sync ==="
 
 MIN_SCORE="${JOB_RADAR_NOTIFY_MIN_SCORE:-70}"
-"${PYTHON_BIN}" "${SCRIPT_DIR}/radar.py" sync --min-score="${MIN_SCORE}" --notify
+"${PYTHON_CMD[@]}" "${SCRIPT_DIR}/radar.py" sync --min-score="${MIN_SCORE}" --notify "$@"
 
 echo "=== [$(date '+%Y-%m-%d %H:%M:%S')] Job Radar sync finished ==="

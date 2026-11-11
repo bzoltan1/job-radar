@@ -64,12 +64,22 @@ DB_PATH = os.environ.get("JOB_RADAR_DB") or os.path.join(BASE_DIR, "jobs.db")
 FEED_PATH = os.environ.get("JOB_RADAR_FEED") or os.path.join(BASE_DIR, "feed.xml")
 
 
+_SETTINGS_CACHE: Dict[str, Any] = {"mtime": None, "data": None}
+_PROFILE_CACHE: Dict[str, Any] = {"mtime": None, "data": None}
+
+
 def load_settings() -> dict:
     """Load optional global settings from config.yaml or data/settings.yaml."""
     if SETTINGS_FILE and os.path.exists(SETTINGS_FILE):
         try:
+            mtime = os.path.getmtime(SETTINGS_FILE)
+            if _SETTINGS_CACHE["mtime"] == mtime and _SETTINGS_CACHE["data"] is not None:
+                return _SETTINGS_CACHE["data"]
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-                return yaml.safe_load(f) or {}
+                data = yaml.safe_load(f) or {}
+                _SETTINGS_CACHE["mtime"] = mtime
+                _SETTINGS_CACHE["data"] = data
+                return data
         except Exception:
             return {}
     return {}
@@ -79,8 +89,17 @@ def load_profile() -> dict:
     """Load candidate career profile, domain expertise, and scoring weights."""
     if not PROFILE_FILE or not os.path.exists(PROFILE_FILE):
         return {}
-    with open(PROFILE_FILE, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    try:
+        mtime = os.path.getmtime(PROFILE_FILE)
+        if _PROFILE_CACHE["mtime"] == mtime and _PROFILE_CACHE["data"] is not None:
+            return _PROFILE_CACHE["data"]
+        with open(PROFILE_FILE, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+            _PROFILE_CACHE["mtime"] = mtime
+            _PROFILE_CACHE["data"] = data
+            return data
+    except Exception:
+        return {}
 
 
 def get_candidate_info() -> Dict[str, Any]:
