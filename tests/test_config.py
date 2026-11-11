@@ -271,7 +271,9 @@ class TestConfigAndEnvironment(unittest.TestCase):
             content="Working on cloud automation with Python, Rust, and low-level C internals.",
         )
         job = Job(id="t1", company_id="testcomp", title=raw.title, location=raw.location, url="")
-        res = stage.process(raw, job, ctx)
+        # Without a candidate profile the full configured tech stack applies.
+        with patch("radar.pipeline.role.load_profile", return_value={}):
+            res = stage.process(raw, job, ctx)
         self.assertTrue(res.should_continue)
         self.assertIn("tech:c,cloud,python,rust", res.tags)
         # 30 (systems) + 20 (4 tech matches * 5) = 50
