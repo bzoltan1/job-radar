@@ -84,7 +84,8 @@ class TestConfigAndEnvironment(unittest.TestCase):
         res_70 = stage.process(raw_70, job_70, ctx)
         self.assertEqual(res_70.score_delta, -10)
 
-    def test_contract_stage_drops_b2b(self):
+    @patch("radar.pipeline.contract.load_profile", return_value={})
+    def test_contract_stage_drops_b2b(self, _mock_profile):
         stage = ContractStage()
         target = CompanyTarget(id="test", name="Test", tier="scaleup")
         ctx = PipelineContext(target=target)

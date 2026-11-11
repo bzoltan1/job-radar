@@ -19,6 +19,13 @@ candidate:
   website: "https://example.com"
 
 # Salary tiers (EUR equivalent). Omit a tier to disable it.
+# Optional B2B / contractor policy. By default postings that only offer B2B, freelance or
+# independent-contractor engagements are dropped.
+# contract:
+#   b2b: accept          # drop (default) | accept
+#   b2b_bonus: 10        # score bonus for accepted B2B postings (tagged contract:b2b)
+#   b2b_patterns:        # extra regexes marking a posting as B2B
+#     - "\\bcontract[\\s-]to[\\s-]hire\\b"
 compensation:
   currency: "EUR"
   target_high: 150000    # +35 score
