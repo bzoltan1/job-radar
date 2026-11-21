@@ -1,7 +1,10 @@
 """Workday ATS source plugin."""
 
 import json
+import ssl
 import sys
+import time
+import urllib.error
 import urllib.request
 from typing import List
 
@@ -17,9 +20,20 @@ class WorkdaySource(BaseSource):
         site = target.site or "jobs"
         sub_domain = target.sub_domain or "wd5"
         base_host = "myworkdayjobs.com"
+        search_text = target.search_text or target.extra.get("search_text", "")
 
         url = f"https://{tenant}.{sub_domain}.{base_host}/wday/cxs/{tenant}/{site}/jobs"
-        headers = {"Content-Type": "application/json", "User-Agent": "JobRadar/2.0"}
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        }
+        ssl_ctx = ssl.create_default_context()
+        try:
+            ssl_ctx.set_ciphers("ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20")
+        except Exception:
+            pass
+
         jobs = []
         limit = 20
         offset = 0
@@ -30,38 +44,56 @@ class WorkdaySource(BaseSource):
                 "appliedFacets": {},
                 "limit": limit,
                 "offset": offset,
-                "searchText": "",
+                "searchText": search_text,
             }).encode("utf-8")
             req = urllib.request.Request(url, data=payload, headers=headers)
-            try:
-                with urllib.request.urlopen(req, timeout=20) as resp:
-                    data = json.loads(resp.read().decode("utf-8"))
-                    postings = data.get("jobPostings", [])
-                    if not postings:
+            data = None
+            for attempt in range(2):
+                try:
+                    with urllib.request.urlopen(req, context=ssl_ctx, timeout=20) as resp:
+                        data = json.loads(resp.read().decode("utf-8"))
                         break
-                    for item in postings:
-                        loc = item.get("locationsText", "")
-                        remote_type = item.get("remoteType", "")
-                        ext_path = item.get("externalPath", "")
-                        path_loc = ext_path.split("/job/")[1].split("/")[0] if "/job/" in ext_path else ""
-                        combined_loc = f"{loc} - {path_loc}" if path_loc and path_loc != loc else loc
-                        full_loc = f"{combined_loc} ({remote_type})" if remote_type else combined_loc
-                        job_id = ext_path.split("_")[-1] if "_" in ext_path else ext_path
+                except urllib.error.HTTPError as e:
+                    if e.code == 429 and attempt == 0:
+                        time.sleep(1.5)
+                        continue
+                    print(f"[-] Error fetching Workday ({tenant}): {e}", file=sys.stderr)
+                    break
+                except Exception as e:
+                    print(f"[-] Error fetching Workday ({tenant}): {e}", file=sys.stderr)
+                    break
 
-                        jobs.append(
-                            RawJob(
-                                id=f"wd_{tenant}_{job_id}",
-                                company_id=target.id,
-                                title=item.get("title", ""),
-                                location=full_loc,
-                                url=f"https://{tenant}.{sub_domain}.{base_host}/en-US/{site}{ext_path}",
-                                content="",
-                            )
-                        )
-                    offset += limit
-                    if offset >= data.get("total", 0):
-                        break
-            except Exception as e:
-                print(f"[-] Error fetching Workday ({tenant}): {e}", file=sys.stderr)
+            if not data:
+                break
+
+            postings = data.get("jobPostings", [])
+            if not postings:
+                break
+            for item in postings:
+                ext_path = item.get("externalPath", "")
+                title = item.get("title", "")
+                if not title or not ext_path:
+                    continue
+
+                loc = item.get("locationsText", "")
+                remote_type = item.get("remoteType", "")
+                path_loc = ext_path.split("/job/")[1].split("/")[0] if "/job/" in ext_path else ""
+                combined_loc = f"{loc} - {path_loc}" if path_loc and path_loc != loc else loc
+                full_loc = f"{combined_loc} ({remote_type})" if remote_type else combined_loc
+                job_id = ext_path.split("_")[-1] if "_" in ext_path else ext_path
+                job_prefix = target.id if target.id != tenant else tenant
+
+                jobs.append(
+                    RawJob(
+                        id=f"wd_{job_prefix}_{job_id}",
+                        company_id=target.id,
+                        title=title,
+                        location=full_loc,
+                        url=f"https://{tenant}.{sub_domain}.{base_host}/en-US/{site}{ext_path}",
+                        content="",
+                    )
+                )
+            offset += limit
+            if offset >= data.get("total", 0):
                 break
         return jobs

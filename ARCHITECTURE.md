@@ -69,7 +69,11 @@ job-radar/
 │   │   ├── workday.py
 │   │   ├── workable.py
 │   │   ├── smartrecruiters.py
+│   │   ├── scraper.py            # Generic ATS bridge to custom HTML scrapers
 │   │   └── custom.py             # Amazon, Dynatrace, Proxmox, Sidero
+│   ├── scrapers/                 # Generic HTML Scraper plugins (auto-discovery)
+│   │   ├── base.py               # BaseHtmlScraper abstract class & parsing utils
+│   │   └── pagopa.py             # PagoPA careers HTML scraper implementation
 │   ├── pipeline/                 # Modular filtering & scoring stages
 │   │   ├── base.py               # PipelineStage interface
 │   │   ├── engine.py             # PipelineEngine orchestrator
@@ -111,6 +115,58 @@ class MyAtsSource(BaseSource):
         return [...]
 ```
 The dynamic loader automatically registers it upon startup.
+
+### Adding a Custom HTML Scraper Plugin (Non-ATS Sites)
+For companies that do not use a standard supported ATS (e.g., custom career portals, regional platforms like InRecruiting), create a dedicated scraper in `radar/scrapers/<name>.py` inheriting from `BaseHtmlScraper`:
+
+```python
+from radar.models import CompanyTarget, RawJob
+from radar.scrapers.base import BaseHtmlScraper
+
+class MyCompanyScraper(BaseHtmlScraper):
+    scraper_id = "mycompany"  # Unique identifier
+    name = "MyCompany Careers"
+    default_url = "https://careers.mycompany.com/openings"
+
+    def scrape(self, target: CompanyTarget) -> list[RawJob]:
+        url = target.extra.get("url") or self.default_url
+        html_doc = self.fetch_html(url)
+
+        # Built-in helpers:
+        # - self.clean_text(raw_html) strips scripts/tags and unescapes entities
+        # - self.extract_section(content, "start_marker", "end_marker")
+        
+        jobs = []
+        # parse jobs from html_doc ...
+        jobs.append(
+            RawJob(
+                id=f"mycompany_{job_slug}",
+                company_id=target.id,
+                title=title,
+                location="Italy (Remote)",
+                url=job_url,
+                content=description,
+                posted_date="2026-11-20",
+            )
+        )
+        return jobs
+```
+
+The scraper is automatically discovered by `radar.scrapers` upon startup. You can reference it in `data/targets.yaml` using either:
+
+```yaml
+  - id: mycompany
+    name: "MyCompany"
+    ats: scraper          # Uses generic HtmlScraperSource
+    board: mycompany      # Matches scraper_id
+```
+or directly as the ATS name:
+```yaml
+  - id: mycompany
+    name: "MyCompany"
+    ats: mycompany        # Auto-bridged into sources registry
+    board: mycompany
+```
 
 ### Adding a new Pipeline Stage
 Create `radar/pipeline/<stage>.py` implementing `PipelineStage` and append it to `PipelineEngine.stages` in `radar/pipeline/engine.py`.

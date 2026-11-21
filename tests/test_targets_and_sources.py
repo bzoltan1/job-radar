@@ -71,6 +71,35 @@ class TestTargetsAndSources(unittest.TestCase):
                 f"Company '{t.id}' uses unknown or unregistered ATS source: '{t.ats}'",
             )
 
+    def test_isovalent_and_chainguard_targets(self):
+        targets = {t.id: t for t in load_targets()}
+
+        self.assertIn("chainguard", targets)
+        cg = targets["chainguard"]
+        self.assertEqual(cg.ats, "greenhouse")
+        self.assertEqual(cg.board, "chainguard")
+
+        self.assertIn("isovalent", targets)
+        iso = targets["isovalent"]
+        self.assertEqual(iso.ats, "workday")
+        self.assertEqual(iso.board, "cisco")
+        self.assertEqual(iso.site, "Cisco_Careers")
+        self.assertEqual(iso.search_text, "isovalent")
+        self.assertTrue(iso.entity_in_home_country)
+
+        self.assertIn("sibill", targets)
+        sib = targets["sibill"]
+        self.assertEqual(sib.ats, "ashby")
+        self.assertEqual(sib.board, "sibill")
+        self.assertTrue(sib.entity_in_home_country)
+
+        self.assertIn("pagopa", targets)
+        pago = targets["pagopa"]
+        self.assertEqual(pago.ats, "scraper")
+        self.assertEqual(pago.board, "pagopa")
+        self.assertTrue(pago.entity_in_home_country)
+
 
 if __name__ == "__main__":
     unittest.main()
+

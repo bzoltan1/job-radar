@@ -311,6 +311,17 @@ PEER_CATALOG = [
         "eor_supported": True,
         "notes": "Open-source developer platform, Go backend, high concurrency. 100% remote in Europe via EOR.",
     },
+    {
+        "id": "sibill",
+        "name": "Sibill",
+        "category": "Fintech & SME Financial Management",
+        "tier": "scaleup",
+        "ats": "ashby",
+        "board": "sibill",
+        "entity_in_home_country": True,
+        "eor_supported": True,
+        "notes": "Sibill S.r.l. HQ (Milan). Financial management & open banking platform for SMEs. Python/TypeScript cloud architecture, Remote in Italy.",
+    },
 ]
 
 

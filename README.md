@@ -3,7 +3,7 @@
 Automated job discovery, ATS scraping, and semantic scoring engine targeting Linux, Kernel, Systems, Observability, and Cloud Platform engineering roles.
 
 **Key Highlights:**
-- **Zero HTML Scraping**: Queries public REST / GraphQL ATS endpoints directly (Greenhouse, Lever, Ashby, Workday, Deel, Recruitee, Workable, SmartRecruiters).
+- **ATS API Ingestion & Extensible Scrapers**: Queries public REST / GraphQL ATS endpoints directly (Greenhouse, Lever, Ashby, Workday, Deel, Recruitee, Workable, SmartRecruiters) and supports modular HTML scrapers for non-ATS portals (e.g. PagoPA).
 - **Multi-Stage Scoring Pipeline**: Filters non-engineering roles, evaluates geographic eligibility & legal entity status, normalizes compensation, and scores candidate skill alignment.
 - **Custom Application Pitch Generator**: Dynamically crafts tailored CV & interview pitch bullets based on candidate profile.
 - **Multiple Output Sinks**: SQLite database, RSS 2.0 feed, Obsidian markdown vault (with Dataview dashboard), Telegram bot notifications, and desktop alerts.
@@ -91,12 +91,14 @@ companies:
     name: "Example Corp"
     tier: scaleup
     category: "Cloud Infrastructure"
-    ats: greenhouse         # greenhouse, lever, ashby, workday, deel, recruitee
-    board: examplecorp      # ATS board identifier
+    ats: greenhouse         # greenhouse, lever, ashby, workday, deel, recruitee, workable, smartrecruiters, or scraper
+    board: examplecorp      # ATS board identifier (or scraper_id when ats is scraper)
     entity_in_home_country: false  # Home-country legal entity presence
     eor_supported: true     # Supports Employer of Record
     notes: "Distributed systems, Go & Rust."
 ```
+
+*(For non-ATS sites, see [ARCHITECTURE.md](ARCHITECTURE.md#adding-a-custom-html-scraper-plugin-non-ats-sites) to create a custom HTML scraper plugin in `radar/scrapers/`).*
 
 Or discover and add companies interactively via CLI:
 ```bash

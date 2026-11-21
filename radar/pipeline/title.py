@@ -20,7 +20,8 @@ TITLE_EXCLUDE_RE = re.compile(
     r"deal\s+desk|sales\s+ops|technical\s+enablement|curriculum\s+developer|"
     r"(?:deal|pricing|monetization|strategy|business|commercial|financial|revenue)\s+analyst|"
     r"junior|entry[\s-]level|"
-    r"interns?|internships?|students?|co-ops?|working\s+students?|apprentices?|loss\s+prevention|"
+    r"interns?|internships?|students?|co-ops?|working\s+students?|apprentices?|"
+    r"stage\s+(?:curriculare|extracurriculare)|tirocini[oa]|stagist[ae]|loss\s+prevention|"
     r"construction|vendor\s+manager|retail|facility\s+manager|warehouse"
     r")\b",
     re.IGNORECASE,

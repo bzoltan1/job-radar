@@ -643,3 +643,258 @@ companies:
     entity_in_home_country: false
     eor_supported: true
     notes: "Open-source developer platform, Go backend, high concurrency. 100% remote in Europe via EOR."
+
+  - id: geaerospace
+    name: "GE Aerospace"
+    tier: big_tech
+    category: "Aerospace & Embedded Controls"
+    ats: workday
+    board: geaerospace
+    site: GE_ExternalSite
+    sub_domain: wd5
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "Avio Aero (GE Aerospace Italy: Rivalta di Torino, Brindisi, Pomigliano). FADEC, real-time Linux controls, avionics."
+
+  - id: gevernova
+    name: "GE Vernova"
+    tier: big_tech
+    category: "Energy Automation & Grid Tech"
+    ats: workday
+    board: gevernova
+    site: Vernova_ExternalSite
+    sub_domain: wd5
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "GE Vernova Italy (Milan, Sesto San Giovanni). Electrification, SCADA, grid automation, power systems."
+
+  - id: gehc
+    name: "GE HealthCare"
+    tier: big_tech
+    category: "Medical Tech & Imaging Platforms"
+    ats: workday
+    board: gehc
+    site: GEHC_ExternalSite
+    sub_domain: wd5
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "GE HealthCare Italy (Milan). Diagnostic imaging, ultrasound, embedded Linux/real-time platforms, medical device cloud."
+
+  - id: bosch
+    name: "Robert Bosch"
+    tier: big_tech
+    category: "Industrial Automation & Embedded IoT"
+    ats: smartrecruiters
+    board: BoschGroup
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "Robert Bosch S.p.A. (Milan, Turin, Bari). Automotive electronics, Bosch Rexroth, embedded RTOS/Linux."
+
+  - id: rockwellautomation
+    name: "Rockwell Automation"
+    tier: enterprise_infra
+    category: "Industrial Automation & Edge Computing"
+    ats: workday
+    board: rockwellautomation
+    site: External_Rockwell_Automation
+    sub_domain: wd1
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "Rockwell Automation Italy (Milan). Factory automation, PLCs, industrial controllers, edge Linux, SCADA telemetry."
+
+  - id: leonardo
+    name: "Leonardo S.p.A."
+    tier: big_tech
+    category: "Defense, Cyber & Supercomputing"
+    ats: workday
+    board: leonardocompany
+    site: LeonardoCareerSite
+    sub_domain: wd3
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "Leonardo S.p.A. HQ (Rome, Genoa, Turin, Milan, Florence). Davinci-1 supercomputer, cyber defense, avionics, defense Linux."
+
+  - id: thales
+    name: "Thales"
+    tier: big_tech
+    category: "Aerospace, Defense & Space Systems"
+    ats: workday
+    board: thales
+    site: Careers
+    sub_domain: wd3
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "Thales Italia & Thales Alenia Space (Rome, Florence, Milan). Radar, satellites, defense electronics, RTOS/Linux."
+
+  - id: rtx
+    name: "RTX (Collins Aerospace)"
+    tier: big_tech
+    category: "Avionics & Aerospace Systems"
+    ats: workday
+    board: globalhr
+    site: REC_RTX_Ext_Gateway
+    sub_domain: wd5
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "Collins Aerospace / Microtecnica S.r.l. (Turin, Luserna San Giovanni, Brugherio). Flight controls, avionics, embedded systems."
+
+  - id: philips
+    name: "Philips"
+    tier: big_tech
+    category: "HealthTech & Clinical Devices"
+    ats: workday
+    board: philips
+    site: jobs-and-careers
+    sub_domain: wd3
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "Philips S.p.A. (Milan / Monza). Medical systems, diagnostic imaging, patient telemetry, embedded clinical devices."
+
+  - id: continental
+    name: "Continental"
+    tier: big_tech
+    category: "Automotive Electronics & Telematics"
+    ats: smartrecruiters
+    board: Continental
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "Continental Automotive Italia (Pisa, Cairo Montenotte). Autonomous mobility, telematics, chassis control, vehicle networking."
+
+  - id: cern
+    name: "CERN"
+    tier: enterprise_infra
+    category: "Scientific Computing & Particle Physics"
+    ats: smartrecruiters
+    board: CERN
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "European Organization for Nuclear Research. High-throughput Linux clusters (WLCG), beam control, real-time data acquisition."
+
+  - id: tomtom
+    name: "TomTom"
+    tier: enterprise_infra
+    category: "Location Tech & Automotive Navigation"
+    ats: lever
+    board: tomtom
+    site: eu
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "TomTom (Milan entity & European remote). Automotive navigation engines, digital HD mapping, autonomous driving telemetry."
+
+  - id: ing
+    name: "ING Group"
+    tier: big_tech
+    category: "Digital Banking & Financial Platforms"
+    ats: workday
+    board: ing
+    site: ICSGBLCOR
+    sub_domain: wd3
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "ING Bank N.V. Milan Branch. Global digital banking platform, transaction engine, cloud infrastructure, SRE."
+
+  - id: n26
+    name: "N26"
+    tier: scaleup
+    category: "Mobile Banking & Core FinTech"
+    ats: greenhouse
+    board: n26
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "N26 Tech Hub Milan. Core banking microservices, cloud security, SRE, mobile banking platform."
+
+  - id: wise
+    name: "Wise"
+    tier: enterprise_infra
+    category: "Global Payments & Financial Infrastructure"
+    ats: smartrecruiters
+    board: Wise
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "Wise (TransferWise). International payment routing, multi-currency ledger, distributed systems. Remote in Europe via EOR."
+
+  - id: checkout
+    name: "Checkout.com"
+    tier: enterprise_infra
+    category: "Payments Platform & Acquiring"
+    ats: ashby
+    board: checkout.com
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "Global payment gateway, acquiring engine, fraud detection, high-scale cloud backend. Remote in Europe via EOR."
+
+  - id: flowtraders
+    name: "Flow Traders"
+    tier: enterprise_infra
+    category: "Prop Trading & Low-Latency Systems"
+    ats: greenhouse
+    board: flowtraders
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "Flow Traders (Milan, Amsterdam, London). Algorithmic market making, ultra-low latency C++, Linux kernel tuning, high-speed networks."
+
+  - id: jumptrading
+    name: "Jump Trading"
+    tier: enterprise_infra
+    category: "HFT & Kernel-Bypass Networking"
+    ats: greenhouse
+    board: jumptrading
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "High-frequency trading tech, custom Linux network stack, kernel bypass, FPGA, ultra-low latency execution."
+
+  - id: hrt
+    name: "Hudson River Trading"
+    tier: enterprise_infra
+    category: "Automated Trading & High-Throughput Linux"
+    ats: greenhouse
+    board: wehrtyou
+    entity_in_home_country: false
+    eor_supported: true
+    notes: "Hudson River Trading. Automated algorithmic trading, bare-metal Linux compute clusters, low-latency C++, storage systems."
+
+  - id: prima
+    name: "Prima Assicurazioni"
+    tier: scaleup
+    category: "InsurTech & Vehicle Telematics"
+    ats: lever
+    board: prima
+    site: eu
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "Prima Assicurazioni HQ (Milan). Tech-driven insurer, vehicle IoT telematics, Go/Rust/Python cloud architecture."
+
+  - id: isovalent
+    name: "Isovalent (Cisco)"
+    tier: big_tech
+    category: "eBPF Networking, Cilium & Cloud Native Security"
+    ats: workday
+    board: cisco
+    site: Cisco_Careers
+    sub_domain: wd5
+    search_text: isovalent
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "Creators of Cilium & eBPF enterprise networking (acquired by Cisco). Cisco Systems Italy S.r.l. entity & remote."
+
+  - id: sibill
+    name: "Sibill"
+    tier: scaleup
+    category: "Fintech & SME Financial Management"
+    ats: ashby
+    board: sibill
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "Sibill S.r.l. HQ (Milan). Financial management & open banking platform for SMEs. Python/TypeScript cloud architecture, Remote in Italy."
+
+  - id: pagopa
+    name: "PagoPA"
+    tier: enterprise_infra
+    category: "Public Cloud Infrastructure & Digital Payments"
+    ats: scraper
+    board: pagopa
+    entity_in_home_country: true
+    eor_supported: true
+    notes: "PagoPA S.p.A. (Roma). Public company operating critical Italian digital infrastructure (pagoPA, App IO, SEND, PDND). 100% smart working / remote Italy."
+
+

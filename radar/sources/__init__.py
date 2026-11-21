@@ -33,6 +33,29 @@ def discover_sources():
         except Exception as e:
             print(f"[-] Warning: Failed to load source plugin {module_name}: {e}")
 
+    # Also register any custom HTML scrapers from radar.scrapers
+    try:
+        from radar.scrapers import discover_scrapers, get_scraper, list_scrapers
+
+        discover_scrapers()
+        for scraper_id in list_scrapers():
+            if scraper_id not in _REGISTRY:
+                scraper = get_scraper(scraper_id)
+                if scraper:
+
+                    class _ScraperSourceWrapper(BaseSource):
+                        def __init__(self, s, sid):
+                            self.scraper = s
+                            self.ats_name = sid
+
+                        def fetch(self, target):
+                            return self.scraper.scrape(target)
+
+                    _REGISTRY[scraper_id] = _ScraperSourceWrapper(scraper, scraper_id)
+    except Exception as e:
+        print(f"[-] Warning: Failed to register scraper plugins as sources: {e}")
+
+
 
 def get_source(ats_name: str) -> Optional[BaseSource]:
     """Retrieve registered source plugin by ATS name."""

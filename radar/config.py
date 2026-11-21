@@ -385,6 +385,7 @@ def load_targets() -> List[CompanyTarget]:
                 notes=c.get("notes", ""),
                 site=c.get("site", "jobs"),
                 sub_domain=c.get("sub_domain", "wd5"),
+                search_text=c.get("search_text", ""),
                 extra=c,
             )
         )

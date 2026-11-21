@@ -73,6 +73,7 @@ class CompanyTarget:
     notes: str = ""
     site: str = "jobs"
     sub_domain: str = "wd5"
+    search_text: str = ""
     extra: Dict[str, Any] = field(default_factory=dict)
 
     def has_home_entity(self) -> bool:
