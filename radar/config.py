@@ -1,5 +1,6 @@
 """Configuration & YAML data loaders for Job Radar."""
 
+import functools
 import glob
 import os
 import re
@@ -10,9 +11,16 @@ from radar.models import CompanyTarget
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_DIR = os.path.join(BASE_DIR, "data")
-# Used only when neither env nor profile configures a country.
-DEFAULT_HOME_COUNTRY = "Italy"
-INTEL_DIR = os.path.join(DATA_DIR, "intel")
+
+
+class ConfigError(Exception):
+    """Required personal configuration is missing."""
+
+
+def _env_path(var: str) -> Optional[str]:
+    """Path from env var with ~ expanded; None if unset or empty."""
+    val = os.environ.get(var)
+    return os.path.expanduser(val) if val else None
 
 
 def load_dotenv_if_present(dotenv_path: Optional[str] = None):
@@ -40,13 +48,13 @@ def load_dotenv_if_present(dotenv_path: Optional[str] = None):
 load_dotenv_if_present()
 
 SETTINGS_FILE = (
-    os.environ.get("JOB_RADAR_CONFIG")
+    _env_path("JOB_RADAR_CONFIG")
     or (os.path.join(DATA_DIR, "settings.yaml") if os.path.exists(os.path.join(DATA_DIR, "settings.yaml")) else None)
     or (os.path.join(BASE_DIR, "config.yaml") if os.path.exists(os.path.join(BASE_DIR, "config.yaml")) else None)
 )
 
 PROFILE_FILE = (
-    os.environ.get("JOB_RADAR_PROFILE")
+    _env_path("JOB_RADAR_PROFILE")
     or (os.path.join(DATA_DIR, "profile.local.yaml") if os.path.exists(os.path.join(DATA_DIR, "profile.local.yaml")) else None)
     or (os.path.join(DATA_DIR, "profile.yaml") if os.path.exists(os.path.join(DATA_DIR, "profile.yaml")) else None)
     or (os.path.join(BASE_DIR, "profile.yaml") if os.path.exists(os.path.join(BASE_DIR, "profile.yaml")) else None)
@@ -54,55 +62,48 @@ PROFILE_FILE = (
 )
 
 TARGETS_FILE = (
-    os.environ.get("JOB_RADAR_TARGETS")
+    _env_path("JOB_RADAR_TARGETS")
+    or (os.path.join(DATA_DIR, "targets.local.yaml") if os.path.exists(os.path.join(DATA_DIR, "targets.local.yaml")) else None)
     or (os.path.join(DATA_DIR, "targets.yaml") if os.path.exists(os.path.join(DATA_DIR, "targets.yaml")) else None)
-    or os.path.join(BASE_DIR, "targets.yaml")
+    or os.path.join(DATA_DIR, "targets.example.yaml")
 )
+# `discover add` writes here so the committed example list is never modified.
+TARGETS_WRITE_FILE = _env_path("JOB_RADAR_TARGETS") or os.path.join(DATA_DIR, "targets.local.yaml")
 
 TECH_STACK_FILE = (
-    os.environ.get("JOB_RADAR_TECH_STACK")
+    _env_path("JOB_RADAR_TECH_STACK")
     or (os.path.join(DATA_DIR, "tech_stack.local.yaml") if os.path.exists(os.path.join(DATA_DIR, "tech_stack.local.yaml")) else None)
     or (os.path.join(DATA_DIR, "tech_stack.yaml") if os.path.exists(os.path.join(DATA_DIR, "tech_stack.yaml")) else None)
     or (os.path.join(BASE_DIR, "tech_stack.yaml") if os.path.exists(os.path.join(BASE_DIR, "tech_stack.yaml")) else None)
     or os.path.join(DATA_DIR, "tech_stack.example.yaml")
 )
 
+def _first_existing(env_var: str, *candidates: str) -> Optional[str]:
+    """Return env override, else first existing candidate path (personal *.local files first)."""
+    return _env_path(env_var) or next((c for c in candidates if os.path.exists(c)), None)
+
+
+COUNTRIES_FILE = _first_existing(
+    "JOB_RADAR_COUNTRIES",
+    os.path.join(DATA_DIR, "countries.local.yaml"),
+    os.path.join(DATA_DIR, "countries.yaml"),
+)
+
+INTEL_DIR = _first_existing(
+    "JOB_RADAR_INTEL_DIR",
+    os.path.join(DATA_DIR, "intel.local"),
+    os.path.join(DATA_DIR, "intel"),
+) or os.path.join(DATA_DIR, "intel.local")
+
 LEGACY_INTEL_FILE = os.path.join(BASE_DIR, "company_intel.yaml")
 
-DB_PATH = os.environ.get("JOB_RADAR_DB") or os.path.join(BASE_DIR, "jobs.db")
-FEED_PATH = os.environ.get("JOB_RADAR_FEED") or os.path.join(BASE_DIR, "feed.xml")
+DB_PATH = _env_path("JOB_RADAR_DB") or os.path.join(BASE_DIR, "jobs.db")
+FEED_PATH = _env_path("JOB_RADAR_FEED") or os.path.join(BASE_DIR, "feed.xml")
 
 
 _SETTINGS_CACHE: Dict[str, Any] = {"mtime": None, "data": None}
 _PROFILE_CACHE: Dict[str, Any] = {"mtime": None, "data": None}
 _TECH_STACK_CACHE: Dict[str, Any] = {"mtime": None, "data": None, "compiled": None, "regex": None}
-
-DEFAULT_TECH_STACK = [
-    {"name": "golang", "pattern": r"\b(golang|go)\b"},
-    {"name": "c", "pattern": r"\bc\b"},
-    {"name": "c++", "pattern": r"\bc\+\+"},
-    {"name": "rust", "pattern": r"\brust\b"},
-    {"name": "python", "pattern": r"\bpython\b"},
-    {"name": "crystal", "pattern": r"\bcrystal\b"},
-    {"name": "cloud", "pattern": r"\bcloud\b"},
-    {"name": "aws", "pattern": r"\baws\b"},
-    {"name": "azure", "pattern": r"\bazure\b"},
-    {"name": "openstack", "pattern": r"\bopenstack\b"},
-    {"name": "ansible", "pattern": r"\bansible\b"},
-    {"name": "linux", "pattern": r"\blinux\b"},
-    {"name": "ebpf", "pattern": r"\bebpf\b"},
-    {"name": "systemd", "pattern": r"\bsystemd\b"},
-    {"name": "kernel", "pattern": r"\bkernel\b"},
-    {"name": "kubernetes", "pattern": r"\bkubernetes\b"},
-    {"name": "docker", "pattern": r"\bdocker\b"},
-    {"name": "podman", "pattern": r"\bpodman\b"},
-    {"name": "kvm", "pattern": r"\bkvm\b"},
-    {"name": "qemu", "pattern": r"\bqemu\b"},
-    {"name": "perf", "pattern": r"\bperf\b"},
-    {"name": "syscall", "pattern": r"\bsyscall\b"},
-    {"name": "posix", "pattern": r"\bposix\b"},
-]
-
 
 def load_settings() -> dict:
     """Load optional global settings from config.yaml or data/settings.yaml."""
@@ -165,7 +166,7 @@ def _normalize_tech_item(item: Any) -> Optional[Tuple[str, str]]:
 def load_tech_stack() -> List[Dict[str, str]]:
     """Load tracked technology keywords and patterns from tech_stack.yaml."""
     if not TECH_STACK_FILE or not os.path.exists(TECH_STACK_FILE):
-        return list(DEFAULT_TECH_STACK)
+        return []
     try:
         mtime = os.path.getmtime(TECH_STACK_FILE)
         if _TECH_STACK_CACHE["mtime"] == mtime and _TECH_STACK_CACHE["data"] is not None:
@@ -186,16 +187,13 @@ def load_tech_stack() -> List[Dict[str, str]]:
             if normalized:
                 parsed.append({"name": normalized[0], "pattern": normalized[1]})
 
-        if not parsed:
-            parsed = list(DEFAULT_TECH_STACK)
-
         _TECH_STACK_CACHE["mtime"] = mtime
         _TECH_STACK_CACHE["data"] = parsed
         _TECH_STACK_CACHE["compiled"] = None
         _TECH_STACK_CACHE["regex"] = None
         return parsed
     except Exception:
-        return list(DEFAULT_TECH_STACK)
+        return []
 
 
 def get_compiled_tech_stack() -> List[Tuple[str, re.Pattern]]:
@@ -204,7 +202,7 @@ def get_compiled_tech_stack() -> List[Tuple[str, re.Pattern]]:
     if _TECH_STACK_CACHE["compiled"] is not None:
         return _TECH_STACK_CACHE["compiled"]
 
-    tech_list = _TECH_STACK_CACHE["data"] or DEFAULT_TECH_STACK
+    tech_list = _TECH_STACK_CACHE["data"] or []
     compiled = []
     for item in tech_list:
         try:
@@ -252,27 +250,26 @@ def get_candidate_info() -> Dict[str, Any]:
     prof = load_profile()
     cand = prof.get("candidate", {})
     return {
-        "name": cand.get("name", "Candidate"),
-        "headline": cand.get("headline", "Systems & Platform Engineer"),
+        "name": cand.get("name", ""),
+        "headline": cand.get("headline", ""),
         "current_role": cand.get("current_role", ""),
-        "experience_years": cand.get("experience_years", 10),
-        "location": os.environ.get("CANDIDATE_LOCATION") or cand.get("location", DEFAULT_HOME_COUNTRY),
-        "allowed_locations": cand.get("allowed_locations", ["Austria"]),
-        "contract_preference": cand.get("contract_preference", "Employee contract"),
+        "experience_years": cand.get("experience_years"),
+        "location": os.environ.get("CANDIDATE_LOCATION") or cand.get("location") or "",
+        "allowed_locations": cand.get("allowed_locations") or [],
+        "contract_preference": cand.get("contract_preference", ""),
         "website": cand.get("website", ""),
         "remote_only": cand.get("remote_only", False),
         "city": cand.get("city", ""),
     }
 
 
-def get_salary_expectations() -> Dict[str, int]:
-    """Retrieve salary threshold tiers (EUR equivalent) for scoring and alerts."""
+def get_salary_expectations() -> Dict[str, Optional[int]]:
+    """Retrieve salary threshold tiers (EUR equivalent) from the profile; unset tiers are None (not scored)."""
     prof = load_profile()
     comp = prof.get("compensation", {}) or prof.get("salary_expectations", {})
     return {
-        "high": int(comp.get("target_high", 150000)),
-        "mid": int(comp.get("target_mid", 120000)),
-        "low": int(comp.get("target_low", 85000)),
+        tier: int(comp[key]) if comp.get(key) is not None else None
+        for tier, key in (("high", "target_high"), ("mid", "target_mid"), ("low", "target_low"))
     }
 
 
@@ -282,14 +279,20 @@ def get_location_config() -> Dict[str, Any]:
     home = (
         os.environ.get("CANDIDATE_COUNTRY")
         or os.environ.get("CANDIDATE_LOCATION")
-        or cand.get("location", DEFAULT_HOME_COUNTRY)
+        or cand.get("location")
+        or ""
     ).strip()
+    if not home:
+        raise ConfigError(
+            "Candidate country not configured: set CANDIDATE_COUNTRY in .env or candidate.location "
+            "in data/profile.local.yaml (see README 'Personalize')."
+        )
 
     allowed_env = os.environ.get("CANDIDATE_ALLOWED_COUNTRIES")
     if allowed_env:
         allowed = [c.strip() for c in allowed_env.split(",") if c.strip()]
     else:
-        raw_allowed = cand.get("allowed_locations", ["Austria"])
+        raw_allowed = cand.get("allowed_locations") or []
         if isinstance(raw_allowed, list):
             allowed = [c.strip() for c in raw_allowed if c.strip()]
         elif isinstance(raw_allowed, str):
@@ -317,16 +320,15 @@ def get_location_config() -> Dict[str, Any]:
     }
 
 
-def get_obsidian_vault_path() -> str:
-    """Resolve Obsidian vault directory from environment, config, or default."""
+def get_obsidian_vault_path() -> Optional[str]:
+    """Resolve Obsidian vault directory from environment or settings; None if not configured."""
     settings = load_settings()
     vault = (
         os.environ.get("OBSIDIAN_VAULT_PATH")
         or os.environ.get("JOB_RADAR_OBSIDIAN_VAULT")
         or settings.get("obsidian", {}).get("vault_path")
-        or os.path.expanduser("~/vault/career")
     )
-    return os.path.expanduser(vault)
+    return os.path.expanduser(vault) if vault else None
 
 
 def get_telegram_config() -> Dict[str, Any]:
@@ -335,8 +337,9 @@ def get_telegram_config() -> Dict[str, Any]:
     tg_settings = settings.get("telegram", {})
 
     token = os.environ.get("TELEGRAM_BOT_TOKEN") or tg_settings.get("bot_token")
-    legacy_cfg_path = os.path.expanduser("~/.config/telegram_acp_bot/config.json")
-    if not token and os.path.exists(legacy_cfg_path):
+    # Optional JSON file holding {"telegram": {"bot_token": ...}} (shared with another bot).
+    legacy_cfg_path = os.path.expanduser(os.environ.get("TELEGRAM_CONFIG_JSON") or tg_settings.get("config_json") or "")
+    if not token and legacy_cfg_path and os.path.exists(legacy_cfg_path):
         try:
             import json
             with open(legacy_cfg_path, "r", encoding="utf-8") as f:
@@ -348,11 +351,12 @@ def get_telegram_config() -> Dict[str, Any]:
     chat_id_val = os.environ.get("TELEGRAM_CHAT_ID") or tg_settings.get("chat_id")
     chat_id = int(chat_id_val) if chat_id_val else None
 
-    min_score_val = os.environ.get("JOB_RADAR_NOTIFY_MIN_SCORE") or tg_settings.get("min_score", 85)
-    min_score = int(min_score_val)
+    min_score_val = os.environ.get("JOB_RADAR_NOTIFY_MIN_SCORE") or tg_settings.get("min_score")
+    min_score = int(min_score_val) if min_score_val is not None else None
 
-    min_sal_val = os.environ.get("JOB_RADAR_NOTIFY_MIN_SALARY") or tg_settings.get("min_salary", 150000)
-    min_salary = int(min_sal_val)
+    # Unset: salary alone never triggers an alert.
+    min_sal_val = os.environ.get("JOB_RADAR_NOTIFY_MIN_SALARY") or tg_settings.get("min_salary")
+    min_salary = int(min_sal_val) if min_sal_val is not None else None
 
     return {
         "bot_token": token,
@@ -381,7 +385,7 @@ def load_targets() -> List[CompanyTarget]:
                 board=c.get("board", c["id"]),
                 entity_in_home_country=c.get("entity_in_home_country", False),
                 eor_supported=c.get("eor_supported", True),
-                allow_austria=c.get("allow_austria", False),
+                allowed_countries=c.get("allowed_countries") or [],
                 notes=c.get("notes", ""),
                 site=c.get("site", "jobs"),
                 sub_domain=c.get("sub_domain", "wd5"),
@@ -392,8 +396,18 @@ def load_targets() -> List[CompanyTarget]:
     return targets
 
 
+@functools.lru_cache(maxsize=1)
+def load_countries() -> Dict[str, dict]:
+    """Load country table {name: {aliases: [...], cities: [...]}} from countries.yaml."""
+    if not COUNTRIES_FILE or not os.path.exists(COUNTRIES_FILE):
+        return {}
+    with open(COUNTRIES_FILE, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    return {k.lower(): v or {} for k, v in (data.get("countries") or {}).items()}
+
+
 def load_all_intel() -> Dict[str, dict]:
-    """Load all company intel dossiers from data/intel/*.yaml."""
+    """Load all company intel dossiers from INTEL_DIR/*.yaml."""
     intel_map = {}
     if os.path.isdir(INTEL_DIR):
         for path in glob.glob(os.path.join(INTEL_DIR, "*.yaml")):

@@ -1,42 +1,49 @@
 # Job Radar: Modular Architecture & Plugin System
 
-Job Radar is an automated career intelligence and scoring engine specifically tuned for Linux, kernel, and systems platform roles eligible for engineers based in the configured country.
+Job Radar is an automated career intelligence and scoring engine. Scoring is driven entirely by your personal profile and target list (see README "Personalize").
 
 ---
 
 ## 1. Architectural Pipeline
 
-Data flows through three distinct plugin layers:
-
 ```
-[data/targets.yaml]
-        │
-        ▼
-┌─────────────────────────┐
-│   Source Plugins (ATS)  │ ◄── greenhouse, ashby, lever, workday, workable, etc.
-└───────────┬─────────────┘
-            │  list[RawJob]
-            ▼
-┌─────────────────────────┐
-│     Pipeline Stages     │
-│  1. TitleFilterStage    │ ◄── drops non-eng, non-systems
-│  2. LocationStage       │ ◄── Primary country (+25), foreign single-country lock (-40), allowed countries (+15), non-EU drop
-│  3. ContractStage       │ ◄── drops B2B, awards legal entity / EOR bonuses
-│  4. RoleSeniorityStage  │ ◄── systems/SRE relevance (+30), staff/principal (+20), tech stack
-│  5. SalaryStage         │ ◄── EUR normalization, >150k (+35), >120k (+25), >85k (+15)
-│  6. ProfileMatchStage   │ ◄── blog research skill matrix & tailored pitch bullets
-│  7. FreshnessStage      │ ◄── age scoring (<7d +20, >75d -30)
-└───────────┬─────────────┘
-            │  Job (scored & tagged)
-            ▼
-┌─────────────────────────┐
-│   Output Sink Plugins   │
-│  - DatabaseSink         │ ──► sqlite jobs.db
-│  - RssSink              │ ──► feed.xml (RSS 2.0)
-│  - ObsidianSink         │ ──► Vault notes, Kanban, Dataview dashboard
-│  - TelegramSink         │ ──► Bot notifications for new top matches
-│  - DesktopSink          │ ──► notify-send alerts
-└─────────────────────────┘
+ personal config (git-ignored *.local.yaml, .env)  ─┐   committed fallbacks: *.example.yaml,
+   profile · targets · tech_stack · countries · intel│   countries.yaml (see README "Personalize")
+                                                    ▼
+                                         radar/config.py loaders
+                                                    │ list[CompanyTarget]
+                                                    ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Source plugins (radar/sources, keyed by `ats`)                           │
+│  greenhouse · lever · ashby · workday · smartrecruiters · recruitee ·    │
+│  workable · deel · custom.py (amazon, dynatrace, sidero, proxmox) ·      │
+│  scraper ──► HTML scraper plugins (radar/scrapers, e.g. pagopa)          │
+└───────────────────────────────┬──────────────────────────────────────────┘
+                                │ list[RawJob]   (empty result ⇒ stored jobs kept active)
+                                ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ PipelineEngine (radar/pipeline/engine.py), stages in order:              │
+│  1. TitleFilterStage    drop non-engineering / excluded roles            │
+│  2. LocationStage       home country +25 · allowed country +15 ·         │
+│                         EMEA/global remote +10 · foreign single-country  │
+│                         lock -40 · non-EU / wrong-city drop              │
+│                         (countries.yaml + profile + target overrides)    │
+│  3. ContractStage       drop B2B · tier bonus · home entity +35 / EOR +25│
+│  4. RoleSeniorityStage  systems/SRE relevance, seniority, tech stack     │
+│  5. SalaryStage         EUR normalization · profile tiers +35/+25/+15/-10│
+│  6. ProfileMatchStage   profile skill_matrix → match % + pitch bullets   │
+│  7. FreshnessStage      <7d +20 … >75d -30                               │
+└───────────────────────────────┬──────────────────────────────────────────┘
+                                │ Job (score >= --min-score)
+                                ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Sink plugins (radar/sinks, keyed by `name`, chosen with --sinks/--notify)│
+│  db        → jobs.db (SQLite, notified_at dedupe)                        │
+│  rss       → feed.xml                                                    │
+│  obsidian  → offers, company dossiers, Dataview dashboard                │
+│  telegram  → alerts for new matches over score/salary thresholds         │
+│  desktop   → notify-send                                                 │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -45,56 +52,38 @@ Data flows through three distinct plugin layers:
 
 ```
 job-radar/
-├── data/                         # Decoupled YAML datasets
-│   ├── profile.yaml              # Candidate skills & scoring weights
-│   ├── targets.yaml              # Tracked companies & ATS endpoints
-│   └── intel/                    # Split dossiers (1 file per company)
-│       ├── cloudflare.yaml
-│       ├── datadog.yaml
-│       ├── grafanalabs.yaml
-│       ├── sysdig.yaml
-│       └── ...
-├── radar/                        # Core Python package
-│   ├── __init__.py
-│   ├── config.py                 # Central path & YAML data loaders
+├── data/
+│   ├── profile.example.yaml      # Template: candidate, salary tiers, skill_matrix, weights
+│   ├── targets.example.yaml      # Template: tracked companies & ATS boards
+│   ├── tech_stack.example.yaml   # Template: tracked technology regexes
+│   ├── countries.yaml            # Country aliases & cities used by LocationStage
+│   ├── intel.example.yaml        # Template: company dossier
+│   └── *.local.yaml, intel.local/  # Your personal data (git-ignored)
+├── radar/
+│   ├── config.py                 # Path resolution (env → *.local → example) & YAML loaders
 │   ├── models.py                 # RawJob, Job, SalaryInfo, ProfileMatch, CompanyTarget
-│   ├── db.py                     # SQLite schema & query operations
-│   ├── discovery.py              # CNCF & peer company explorer
-│   ├── cli.py                    # Unified CLI command router
-│   ├── sources/                  # Source plugins (dynamic auto-discovery via pkgutil)
+│   ├── db.py                     # SQLite schema, inline migrations, queries
+│   ├── discovery.py              # Peer catalog & CNCF landscape explorer
+│   ├── cli.py                    # CLI commands
+│   ├── sources/                  # ATS source plugins (auto-discovered)
 │   │   ├── base.py               # BaseSource interface
-│   │   ├── greenhouse.py
-│   │   ├── ashby.py
-│   │   ├── lever.py
-│   │   ├── workday.py
-│   │   ├── workable.py
-│   │   ├── smartrecruiters.py
-│   │   ├── scraper.py            # Generic ATS bridge to custom HTML scrapers
-│   │   └── custom.py             # Amazon, Dynatrace, Proxmox, Sidero
-│   ├── scrapers/                 # Generic HTML Scraper plugins (auto-discovery)
-│   │   ├── base.py               # BaseHtmlScraper abstract class & parsing utils
-│   │   └── pagopa.py             # PagoPA careers HTML scraper implementation
-│   ├── pipeline/                 # Modular filtering & scoring stages
-│   │   ├── base.py               # PipelineStage interface
-│   │   ├── engine.py             # PipelineEngine orchestrator
-│   │   ├── title.py              # Title & hard tech exclusions
-│   │   ├── location.py           # Primary country, foreign lock, Non-EU filter
-│   │   ├── contract.py           # B2B drop, legal entity bonuses
-│   │   ├── role.py               # Systems/SRE role & seniority scoring
-│   │   ├── salary.py             # Regex parser & EUR normalization
-│   │   ├── profile.py            # Blog skill matrix match & pitch generation
-│   │   └── freshness.py          # Post age & staleness decay
-│   └── sinks/                    # Sink plugins (dynamic auto-discovery)
-│       ├── base.py               # BaseSink interface
-│       ├── db_sink.py            # SQLite updater
-│       ├── rss_sink.py           # feed.xml generator
-│       ├── obsidian_sink.py      # Vault sync & dashboard generator
-│       ├── telegram_sink.py      # Telegram bot alerts
-│       └── desktop_sink.py       # Desktop notification
-├── radar.py                      # Main entrypoint
-├── run_sync.sh                   # Runner script invoked by systemd
-├── run_radar_cron.sh             # Backward-compatibility wrapper for systemd unit
-└── jobs.db                       # Local SQLite database
+│   │   ├── greenhouse.py, lever.py, ashby.py, workday.py, smartrecruiters.py,
+│   │   │   recruitee.py, workable.py, deel.py
+│   │   ├── custom.py             # Amazon, Dynatrace, Sidero, Proxmox
+│   │   └── scraper.py            # Bridge `ats: scraper` → HTML scraper plugins
+│   ├── scrapers/                 # HTML scraper plugins (auto-discovered)
+│   │   ├── base.py               # BaseHtmlScraper & parsing helpers
+│   │   └── pagopa.py
+│   ├── pipeline/                 # Stages (fixed order in engine.py)
+│   │   ├── base.py, engine.py
+│   │   └── title.py, location.py, contract.py, role.py, salary.py, profile.py, freshness.py
+│   └── sinks/                    # Sink plugins (auto-discovered)
+│       └── base.py, db_sink.py, rss_sink.py, obsidian_sink.py, telegram_sink.py, desktop_sink.py
+├── radar.py                      # Entrypoint
+├── run_sync.sh                   # systemd runner (sync --notify)
+├── systemd/                      # Unit/timer examples
+└── matcher.py, telegram_notify.py, obsidian_sync.py, discover.py, run_radar_cron.sh
+                                  # Backward-compat wrappers
 ```
 
 ---
@@ -143,7 +132,7 @@ class MyCompanyScraper(BaseHtmlScraper):
                 id=f"mycompany_{job_slug}",
                 company_id=target.id,
                 title=title,
-                location="Italy (Remote)",
+                location="Remote (EMEA)",
                 url=job_url,
                 content=description,
                 posted_date="2026-11-20",
@@ -152,7 +141,7 @@ class MyCompanyScraper(BaseHtmlScraper):
         return jobs
 ```
 
-The scraper is automatically discovered by `radar.scrapers` upon startup. You can reference it in `data/targets.yaml` using either:
+The scraper is automatically discovered by `radar.scrapers` upon startup. You can reference it in your targets file (`data/targets.local.yaml`) using either:
 
 ```yaml
   - id: mycompany

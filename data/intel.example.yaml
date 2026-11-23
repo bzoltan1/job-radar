@@ -1,0 +1,25 @@
+# Example company dossier (template, not loaded).
+# Real dossiers are personal research: put one file per company in data/intel.local/<company_id>.yaml
+# (git-ignored; override the directory with JOB_RADAR_INTEL_DIR). The file name must match the
+# target id in your targets list. Used by `radar.py company <id>` and the Obsidian sink.
+name: Example Corp
+tier: Enterprise Infrastructure
+glassdoor_rating: 4.0
+recommend_to_friend: 80%
+ceo_approval: 85%
+home_legal_entity: "Example Corp Ltd. (local subsidiary in your country, or N/A)"
+contract_type: "Permanent employee contract"
+remote_policy: "Remote-first within EMEA"
+emea_staff_comp_range: "€100,000 - €140,000 + equity"
+culture_and_wlb:
+  summary: "One-paragraph summary of engineering culture and work-life balance."
+  pros:
+  - "Strong engineering peer group"
+  cons:
+  - "Occasional timezone overlap with US teams"
+interview_process:
+  stages:
+  - "1. Recruiter Screen (30m)"
+  - "2. Technical Deep Dive (60m)"
+  - "3. System Design (60m)"
+  insider_tips: "How to pitch YOUR background for this company (keep this file private)."

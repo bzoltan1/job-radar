@@ -5,6 +5,7 @@ import os
 import sys
 
 from radar.config import (
+    ConfigError,
     get_location_config,
     load_all_intel,
     load_company_intel,
@@ -25,6 +26,7 @@ from radar.sources import get_source, list_sources
 
 
 def cmd_sync(args):
+    get_location_config()  # fail fast on missing candidate country
     conn = get_db()
     targets = load_targets()
     if getattr(args, "company", None):
@@ -47,6 +49,13 @@ def cmd_sync(args):
         raw_jobs = source.fetch(target)
         total_scanned += len(raw_jobs)
         existing_first_seen = get_existing_first_seen(conn, target.id)
+        # shortcut: sources swallow fetch errors and return [], so an empty result keeps the
+        # company's jobs active instead of wiping them; a company that really drops to zero
+        # openings keeps stale rows until sources report failures explicitly.
+        if not raw_jobs:
+            if existing_first_seen:
+                print(f"  ! {target.name:<24} | Found: 0 | keeping {len(existing_first_seen)} stored jobs (fetch may have failed)")
+            continue
         deactivate_company_jobs(conn, target.id)
 
         target_matched = 0
@@ -216,6 +225,13 @@ def cmd_stats(args):
 
 
 def main():
+    try:
+        _main()
+    except ConfigError as e:
+        sys.exit(f"[-] Config error: {e}")
+
+
+def _main():
     parser = argparse.ArgumentParser(description="Job Radar: Modular Systems & Linux Career Engine")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -267,7 +283,7 @@ def main():
     p_dlist = disc_sub.add_parser("list", help="List curated peer companies")
     p_dlist.add_argument("--category", help="Filter by category")
     p_dlist.add_argument("--tier", help="Filter by tier")
-    p_dlist.add_argument("--home-only", action="store_true", help="Only show with home-country entity or EOR")
+    p_dlist.add_argument("--home-only", action="store_true", help="Only show companies known to hire via EOR")
 
     p_dadd = disc_sub.add_parser("add", help="Add peer company to tracked targets")
     p_dadd.add_argument("company_id", help="Company ID to add")

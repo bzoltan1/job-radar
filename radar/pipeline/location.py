@@ -1,46 +1,11 @@
 """Location evaluation & geographic scoring stage."""
 
 import re
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set
 
-from radar.config import get_location_config
+from radar.config import get_location_config, load_countries
 from radar.models import Job, PipelineContext, RawJob
 from radar.pipeline.base import PipelineStage, StageResult
-
-COUNTRY_SYNONYMS = {
-    "italy": ("italy", "italia", "milan", "milano", "rome", "roma", "turin", "torino", "bologna", "naples", "napoli", "asti", "genoa", "genova", "florence", "firenze", "padua", "padova", "verona", "trieste", "venice", "venezia", "pisa", "trento", "bolzano", "como"),
-    "austria": ("austria", "vienna", "wien", "linz", "graz", "salzburg", "innsbruck"),
-    "germany": ("germany", "munich", "münchen", "berlin", "frankfurt", "deutschland", "hamburg", "cologne", "köln", "stuttgart"),
-    "france": ("france", "paris", "nantes", "grenoble", "montpellier", "lyon", "bordeaux", "toulouse"),
-    "uk": ("united kingdom", "uk", "london", "england", "scotland", "wales", "edinburgh", "manchester"),
-    "united kingdom": ("united kingdom", "uk", "london", "england", "scotland", "wales", "edinburgh", "manchester"),
-    "netherlands": ("netherlands", "amsterdam", "holland", "rotterdam", "utrecht", "eindhoven"),
-    "spain": ("spain", "madrid", "barcelona", "valencia", "seville", "españa"),
-    "ireland": ("ireland", "dublin", "cork", "galway"),
-    "poland": ("poland", "warsaw", "krakow", "wrocław", "polska", "gdansk"),
-    "sweden": ("sweden", "stockholm", "gothenburg", "malmö"),
-    "switzerland": ("switzerland", "zurich", "geneva", "basel", "bern", "schweiz", "suisse"),
-    "portugal": ("portugal", "lisbon", "porto"),
-    "belgium": ("belgium", "brussels", "antwerp", "ghent"),
-    "czech": ("czech", "prague", "czechia", "brno"),
-    "denmark": ("denmark", "copenhagen", "aarhus"),
-    "norway": ("norway", "oslo", "bergen"),
-    "finland": ("finland", "helsinki", "espoo"),
-    "romania": ("romania", "bucharest", "cluj"),
-    "greece": ("greece", "athens", "thessaloniki"),
-    "canada": ("canada", "toronto", "vancouver", "montreal", "ottawa"),
-    "australia": ("australia", "sydney", "melbourne", "brisbane"),
-    "brazil": ("brazil", "brasil", "sao paulo", "rio de janeiro"),
-    "india": ("india", "bengaluru", "bangalore", "delhi", "mumbai", "hyderabad", "pune"),
-    "us": ("united states", "usa", "us", "new york", "california", "san francisco", "austin", "texas", "seattle"),
-    "united states": ("united states", "usa", "us", "new york", "california", "san francisco", "austin", "texas", "seattle"),
-}
-
-ITALIAN_CITIES = {
-    "milan", "milano", "rome", "roma", "turin", "torino", "bologna", "naples", "napoli",
-    "asti", "genoa", "genova", "florence", "firenze", "padua",
-    "padova", "verona", "trieste", "venice", "venezia", "pisa", "trento", "bolzano", "como",
-}
 
 LOCATION_EMEA_REMOTE_RE = re.compile(
     r"\b(emea|europe|worldwide|anywhere|global)\b",
@@ -57,22 +22,21 @@ NON_EU_DISQUALIFY_RE = re.compile(
 _REGEX_CACHE: Dict[str, re.Pattern] = {}
 
 
+def _country_terms(country: str) -> List[str]:
+    entry = load_countries().get(country, {})
+    return list(entry.get("aliases") or [country]) + list(entry.get("cities") or [])
+
+
 def get_country_regex(country_name: str) -> re.Pattern:
     key = country_name.lower().strip()
     if key not in _REGEX_CACHE:
-        syns = COUNTRY_SYNONYMS.get(key, (key,))
-        pattern = r"\b(" + "|".join(re.escape(s) for s in syns) + r")\b"
+        pattern = r"\b(" + "|".join(re.escape(s) for s in _country_terms(key)) + r")\b"
         _REGEX_CACHE[key] = re.compile(pattern, re.IGNORECASE)
     return _REGEX_CACHE[key]
 
 
 def get_eu_countries(text: str) -> Set[str]:
-    found = set()
-    for c in COUNTRY_SYNONYMS:
-        rx = get_country_regex(c)
-        if rx.search(text):
-            found.add(c)
-    return found
+    return {c for c in load_countries() if get_country_regex(c).search(text)}
 
 
 class LocationStage(PipelineStage):
@@ -89,7 +53,8 @@ class LocationStage(PipelineStage):
 
         loc_cfg = get_location_config()
         home_country = loc_cfg["home_country"].lower()
-        allowed_countries = [c.lower() for c in loc_cfg.get("allowed_countries", ["Austria"])]
+        # Candidate-wide allowed countries plus per-company extras from targets (allowed_countries).
+        allowed_countries = list(dict.fromkeys(c.lower() for c in loc_cfg["allowed_countries"] + company.allowed_countries))
         remote_only = loc_cfg.get("remote_only", False)
         candidate_city = loc_cfg.get("city", "").lower().strip()
 
@@ -100,21 +65,14 @@ class LocationStage(PipelineStage):
         for ac in allowed_countries:
             ac_re = get_country_regex(ac)
             if ac_re.search(location) or ac_re.search(title):
-                if ac == "austria" and not (company.allow_austria or "austria" in allowed_countries):
-                    continue
                 is_direct_allowed = True
                 break
-
-        if not is_direct_allowed and company.allow_austria:
-            austria_re = get_country_regex("austria")
-            if austria_re.search(location) or austria_re.search(title):
-                is_direct_allowed = True
 
         # Check remote indicators
         is_title_geo = bool(re.search(r"\b(emea|europe)\b", title, re.IGNORECASE))
         is_loc_geo = bool(LOCATION_EMEA_REMOTE_RE.search(location)) or (location.strip().lower() in ("remote", "distributed"))
         is_remote_keyword = bool(re.search(r"\b(remote|distributed|telecommute|work from home|flexible)\b", f"{title} {location}", re.IGNORECASE))
-        is_content_remote = bool(re.search(r"\b(100% remote|fully remote|work from anywhere|remote within italy)\b", raw_job.content or "", re.IGNORECASE))
+        is_content_remote = bool(re.search(rf"\b(100% remote|fully remote|work from anywhere|remote within {re.escape(home_country)})\b", raw_job.content or "", re.IGNORECASE))
         is_remote = is_title_geo or is_loc_geo or is_remote_keyword or is_content_remote
 
         # Hybrid / On-site check
@@ -123,9 +81,10 @@ class LocationStage(PipelineStage):
         matches_home_city = bool(candidate_city and re.search(rf"\b{re.escape(candidate_city)}\b", location, re.IGNORECASE))
 
         loc_lower = location.lower()
+        home_cities = load_countries().get(home_country, {}).get("cities") or []
         has_different_city = any(
-            bool(re.search(rf"\b{c}\b", loc_lower))
-            for c in ITALIAN_CITIES
+            bool(re.search(rf"\b{re.escape(c)}\b", loc_lower))
+            for c in home_cities
             if c != candidate_city
         )
 
@@ -182,7 +141,6 @@ class LocationStage(PipelineStage):
         elif is_direct_allowed:
             score_delta += 15
             tags.append("loc:allowed_country")
-            tags.append("loc:austria")
         elif is_foreign_single_country:
             score_delta -= 40
             tags.append("loc:foreign_restriction(-40)")

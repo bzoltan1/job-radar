@@ -1,0 +1,85 @@
+# Country lookup table used by the location stage.
+# key: lowercase country name as used in CANDIDATE_COUNTRY / candidate.location / allowed_locations.
+# aliases: names matched in job location/title; cities: matched as that country and used to
+# detect "different city" roles when remote_only is set.
+# Add your country here if missing; a country not listed matches only its own name.
+countries:
+  italy:
+    aliases: [italy, italia]
+    cities: [milan, milano, rome, roma, turin, torino, bologna, naples, napoli, asti, genoa, genova, florence, firenze, padua, padova, verona, trieste, venice, venezia, pisa, trento,
+      bolzano, como]
+  austria:
+    aliases: [austria]
+    cities: [vienna, wien, linz, graz, salzburg, innsbruck]
+  germany:
+    aliases: [germany, deutschland]
+    cities: [munich, münchen, berlin, frankfurt, hamburg, cologne, köln, stuttgart]
+  france:
+    aliases: [france]
+    cities: [paris, nantes, grenoble, montpellier, lyon, bordeaux, toulouse]
+  uk:
+    aliases: [united kingdom, uk, england, scotland, wales]
+    cities: [london, edinburgh, manchester]
+  united kingdom:
+    aliases: [united kingdom, uk, england, scotland, wales]
+    cities: [london, edinburgh, manchester]
+  netherlands:
+    aliases: [netherlands, holland]
+    cities: [amsterdam, rotterdam, utrecht, eindhoven]
+  spain:
+    aliases: [spain, españa]
+    cities: [madrid, barcelona, valencia, seville]
+  ireland:
+    aliases: [ireland]
+    cities: [dublin, cork, galway]
+  poland:
+    aliases: [poland, polska]
+    cities: [warsaw, krakow, wrocław, gdansk]
+  sweden:
+    aliases: [sweden]
+    cities: [stockholm, gothenburg, malmö]
+  switzerland:
+    aliases: [switzerland, schweiz, suisse]
+    cities: [zurich, geneva, basel, bern]
+  portugal:
+    aliases: [portugal]
+    cities: [lisbon, porto]
+  belgium:
+    aliases: [belgium]
+    cities: [brussels, antwerp, ghent]
+  czech:
+    aliases: [czech, czechia]
+    cities: [prague, brno]
+  denmark:
+    aliases: [denmark]
+    cities: [copenhagen, aarhus]
+  norway:
+    aliases: [norway]
+    cities: [oslo, bergen]
+  finland:
+    aliases: [finland]
+    cities: [helsinki, espoo]
+  romania:
+    aliases: [romania]
+    cities: [bucharest, cluj]
+  greece:
+    aliases: [greece]
+    cities: [athens, thessaloniki]
+  canada:
+    aliases: [canada]
+    cities: [toronto, vancouver, montreal, ottawa]
+  australia:
+    aliases: [australia]
+    cities: [sydney, melbourne, brisbane]
+  brazil:
+    aliases: [brazil, brasil]
+    cities: [sao paulo, rio de janeiro]
+  india:
+    aliases: [india]
+    cities: [bengaluru, bangalore, delhi, mumbai, hyderabad, pune]
+  us:
+    aliases: [united states, usa, us]
+    cities: [new york, california, san francisco, austin, texas, seattle]
+  united states:
+    aliases: [united states, usa, us]
+    cities: [new york, california, san francisco, austin, texas, seattle]

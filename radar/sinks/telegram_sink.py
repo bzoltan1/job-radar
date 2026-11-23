@@ -93,9 +93,12 @@ class TelegramSink(BaseSink):
         tg_cfg = get_telegram_config()
         min_score = context.get("min_score")
         if min_score is None:
-            min_score = tg_cfg.get("min_score", 85)
+            min_score = tg_cfg["min_score"]
+        if min_score is None:
+            print("[-] Telegram: no score threshold (--min-score or JOB_RADAR_NOTIFY_MIN_SCORE); skipping.", file=sys.stderr)
+            return
 
-        min_salary = tg_cfg.get("min_salary", 150000)
+        min_salary = tg_cfg["min_salary"]
         force = context.get("force_notify", False)
         conn = context.get("db_conn")
 
@@ -105,7 +108,7 @@ class TelegramSink(BaseSink):
             if any("loc:foreign_restriction" in t for t in j.tags):
                 continue
 
-            if j.score >= min_score or (j.salary.norm_max_eur and j.salary.norm_max_eur >= min_salary):
+            if j.score >= min_score or (min_salary is not None and j.salary.norm_max_eur and j.salary.norm_max_eur >= min_salary):
                 if force:
                     eligible_jobs.append(j)
                 elif conn:

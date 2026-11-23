@@ -6,7 +6,7 @@ import sys
 import urllib.request
 import yaml
 
-from radar.config import TARGETS_FILE
+from radar.config import TARGETS_FILE, TARGETS_WRITE_FILE
 
 PEER_CATALOG = [
     {
@@ -16,9 +16,8 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "canonical",
-        "entity_in_home_country": False,
         "eor_supported": True,
-        "notes": "Ubuntu creators. Home based EMEA/Worldwide. EOR in Italy.",
+        "notes": "Ubuntu creators. Home based EMEA/Worldwide.",
     },
     {
         "id": "redhat",
@@ -29,9 +28,8 @@ PEER_CATALOG = [
         "board": "redhat",
         "site": "jobs",
         "sub_domain": "wd5",
-        "entity_in_home_country": True,
         "eor_supported": True,
-        "notes": "Red Hat Italy S.r.l. Enterprise Linux, OpenShift, Kernel & Systems.",
+        "notes": "Enterprise Linux, OpenShift, Kernel & Systems.",
     },
     {
         "id": "intel",
@@ -42,9 +40,8 @@ PEER_CATALOG = [
         "board": "intel",
         "site": "External",
         "sub_domain": "wd1",
-        "entity_in_home_country": True,
         "eor_supported": True,
-        "notes": "Intel Corporation Italia S.p.A. Linux kernel, toolchains, low-level systems.",
+        "notes": "Linux kernel, toolchains, low-level systems.",
     },
     {
         "id": "arm",
@@ -53,7 +50,6 @@ PEER_CATALOG = [
         "tier": "big_tech",
         "ats": "smartrecruiters",
         "board": "Arm",
-        "entity_in_home_country": True,
         "eor_supported": True,
         "notes": "Arm architecture, Linux kernel enablement, toolchain, firmware.",
     },
@@ -64,9 +60,8 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "datadog",
-        "entity_in_home_country": True,
         "eor_supported": True,
-        "notes": "Datadog Italy S.r.l. Major eBPF, Go, C, Linux kernel observability stack.",
+        "notes": "Major eBPF, Go, C, Linux kernel observability stack.",
     },
     {
         "id": "grafanalabs",
@@ -75,9 +70,8 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "grafanalabs",
-        "entity_in_home_country": False,
         "eor_supported": True,
-        "notes": "Fully distributed. Explicit 'Italy (Remote)' listings. Go, eBPF, Prometheus.",
+        "notes": "Fully distributed. Go, eBPF, Prometheus.",
     },
     {
         "id": "sysdig",
@@ -86,9 +80,8 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "sysdig",
-        "entity_in_home_country": True,
         "eor_supported": True,
-        "notes": "Sysdig Italy S.r.l. with Milan hub. eBPF, Falco creators, runtime security agent.",
+        "notes": "eBPF, Falco creators, runtime security agent.",
     },
     {
         "id": "cloudflare",
@@ -97,9 +90,8 @@ PEER_CATALOG = [
         "tier": "big_tech",
         "ats": "greenhouse",
         "board": "cloudflare",
-        "entity_in_home_country": True,
         "eor_supported": True,
-        "notes": "Cloudflare Italy S.r.l. Linux network stack, eBPF/XDP, kernel tuning, Go/Rust.",
+        "notes": "Linux network stack, eBPF/XDP, kernel tuning, Go/Rust.",
     },
     {
         "id": "elastic",
@@ -108,9 +100,8 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "elastic",
-        "entity_in_home_country": True,
         "eor_supported": True,
-        "notes": "Distributed by design. Hires remote employees in Italy.",
+        "notes": "Distributed by design.",
     },
     {
         "id": "gitlab",
@@ -119,7 +110,6 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "gitlab",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "All-remote company. EOR-based hiring across EMEA.",
     },
@@ -130,9 +120,8 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "docker",
-        "entity_in_home_country": True,
         "eor_supported": True,
-        "notes": "Docker Desktop, Linux containers, buildx. Explicit Italy remote listings.",
+        "notes": "Docker Desktop, Linux containers, buildx.",
     },
     {
         "id": "siderolabs",
@@ -141,7 +130,6 @@ PEER_CATALOG = [
         "tier": "scaleup",
         "ats": "sidero",
         "board": "siderolabs",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Creators of Talos Linux. 100% Go & Linux kernel immutable platform.",
     },
@@ -152,10 +140,8 @@ PEER_CATALOG = [
         "tier": "scaleup",
         "ats": "proxmox",
         "board": "proxmox",
-        "entity_in_home_country": False,
         "eor_supported": False,
-        "allow_austria": True,
-        "notes": "Vienna Austria headquarters. Proxmox VE, Debian, Linux kernel, QEMU/KVM, ZFS.",
+        "notes": "Proxmox VE, Debian, Linux kernel, QEMU/KVM, ZFS.",
     },
     {
         "id": "ciq",
@@ -164,7 +150,6 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "ciq",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Rocky Linux commercial sponsor. Linux kernel live patching. 100% remote.",
     },
@@ -175,7 +160,6 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "tigera",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Project Calico creators. eBPF dataplane, Linux networking, CNI. Remote in Europe via EOR.",
     },
@@ -186,7 +170,6 @@ PEER_CATALOG = [
         "tier": "scaleup",
         "ats": "ashby",
         "board": "goteleport",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Zero-trust infrastructure access. Linux PAM, eBPF audit logging, Go. Remote in Europe via EOR.",
     },
@@ -197,7 +180,6 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "cribl",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Cribl Stream, telemetry pipelines, distributed data processing. Remote-first in Europe via EOR.",
     },
@@ -208,7 +190,6 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "ashby",
         "board": "kong",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Cloud API gateway, Envoy/NGINX data plane, Lua/Go/Rust. Remote across Europe.",
     },
@@ -219,7 +200,6 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "honeycomb",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "High-cardinality observability & distributed tracing pioneers. Remote in Europe via EOR.",
     },
@@ -230,7 +210,6 @@ PEER_CATALOG = [
         "tier": "scaleup",
         "ats": "greenhouse",
         "board": "upbound",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Crossplane creators, cloud-native control planes, Kubernetes, Go. 100% remote via EOR.",
     },
@@ -241,7 +220,6 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "ashby",
         "board": "vultr",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Global cloud platform, bare-metal orchestration, Linux virtualization, QEMU/KVM. Remote.",
     },
@@ -252,7 +230,6 @@ PEER_CATALOG = [
         "tier": "scaleup",
         "ats": "ashby",
         "board": "motherduck",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Serverless DuckDB cloud analytics, C++/Rust/Go, data engines. Remote in Europe/US via EOR.",
     },
@@ -263,7 +240,6 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "lever",
         "board": "scaleway",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "European cloud provider (Iliad group). Bare metal, virtualization, Linux kernel. Remote in Europe.",
     },
@@ -274,7 +250,6 @@ PEER_CATALOG = [
         "tier": "enterprise_infra",
         "ats": "greenhouse",
         "board": "starburst",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Enterprise Trino distributed query engine, high-performance data systems. Remote in Europe.",
     },
@@ -285,7 +260,6 @@ PEER_CATALOG = [
         "tier": "scaleup",
         "ats": "greenhouse",
         "board": "yugabyte",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Distributed PostgreSQL, C++, Raft consensus, storage engines. Remote in Europe via EOR.",
     },
@@ -296,7 +270,6 @@ PEER_CATALOG = [
         "tier": "scaleup",
         "ats": "ashby",
         "board": "influxdata",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "InfluxDB 3.0, Apache Arrow DataFusion, Rust/Go, time-series storage. Remote-first via EOR.",
     },
@@ -307,20 +280,8 @@ PEER_CATALOG = [
         "tier": "scaleup",
         "ats": "greenhouse",
         "board": "mattermost",
-        "entity_in_home_country": False,
         "eor_supported": True,
         "notes": "Open-source developer platform, Go backend, high concurrency. 100% remote in Europe via EOR.",
-    },
-    {
-        "id": "sibill",
-        "name": "Sibill",
-        "category": "Fintech & SME Financial Management",
-        "tier": "scaleup",
-        "ats": "ashby",
-        "board": "sibill",
-        "entity_in_home_country": True,
-        "eor_supported": True,
-        "notes": "Sibill S.r.l. HQ (Milan). Financial management & open banking platform for SMEs. Python/TypeScript cloud architecture, Remote in Italy.",
     },
 ]
 
@@ -335,20 +296,19 @@ def load_tracked_ids():
 
 def list_peers(category=None, tier=None, home_only=False):
     tracked = load_tracked_ids()
-    print(f"\n{'ID':<15} | {'NAME':<20} | {'TIER':<16} | {'ENTITY':<9} | {'EOR':<5} | {'STATUS'}")
+    print(f"\n{'ID':<15} | {'NAME':<20} | {'TIER':<16} | {'EOR':<5} | {'STATUS'}")
     print("-" * 80)
     for p in PEER_CATALOG:
         if category and category.lower() not in p["category"].lower():
             continue
         if tier and tier.lower() != p["tier"].lower():
             continue
-        if home_only and not (p["entity_in_home_country"] or p["eor_supported"]):
+        if home_only and not p["eor_supported"]:
             continue
 
         status = "[TRACKED]" if p["id"] in tracked else "[AVAILABLE]"
-        entity = "YES" if p["entity_in_home_country"] else "NO"
         eor = "YES" if p["eor_supported"] else "NO"
-        print(f"{p['id']:<15} | {p['name']:<20} | {p['tier']:<16} | {entity:<9} | {eor:<5} | {status}")
+        print(f"{p['id']:<15} | {p['name']:<20} | {p['tier']:<16} | {eor:<5} | {status}")
 
 
 def add_peer(company_id: str):
@@ -357,6 +317,7 @@ def add_peer(company_id: str):
     if not match:
         sys.exit(f"Company ID '{target_id}' not found in discovery catalog.")
 
+    # Seed the personal list from the active one (e.g. the example) on first add.
     with open(TARGETS_FILE, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
 
@@ -366,10 +327,10 @@ def add_peer(company_id: str):
         return
 
     data.setdefault("companies", []).append(match)
-    with open(TARGETS_FILE, "w", encoding="utf-8") as f:
+    with open(TARGETS_WRITE_FILE, "w", encoding="utf-8") as f:
         yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
 
-    print(f"[+] Added {match['name']} ({match['id']}) to targets.yaml successfully.")
+    print(f"[+] Added {match['name']} ({match['id']}) to {os.path.relpath(TARGETS_WRITE_FILE)}.")
 
 
 def query_cncf(query: str, limit: int = 20):

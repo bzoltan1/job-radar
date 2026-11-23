@@ -1,88 +1,91 @@
-# Example Candidate Profile for Job Radar
-# Copy this file to data/profile.yaml and customize with your background, skills, and preferences.
+# Example candidate profile (template). Do NOT put your data here.
+# Copy to data/profile.local.yaml (git-ignored) and fill it from your CV; see README "Personalize".
+# Nothing below has a built-in fallback in code: what you omit is simply not scored.
 
 candidate:
   name: "Jane Doe"
-  headline: "Staff Systems / Linux Platform Engineer — Observability, Kernel/Userland Plumbing & Runtime Testing"
-  current_role: "Senior Infrastructure Engineer"
-  experience_years: 15
-  # Primary country of residence (e.g. Italy, Germany, France, United Kingdom, Spain, Canada, etc.)
-  location: "Germany"
-  # Optional list of secondary countries eligible for direct employment or relocation
-  allowed_locations:
-    - "Austria"
-    - "Switzerland"
-  contract_preference: "Employee contract (direct entity or EOR; no freelance/B2B)"
+  headline: "Senior Platform Engineer"
+  current_role: "Platform Engineer"
+  experience_years: 10
+  # REQUIRED: country of residence (key of data/countries.yaml). Or set CANDIDATE_COUNTRY in .env.
+  # Left empty on purpose so an unconfigured install fails fast instead of scoring for a wrong country.
+  location: ""
+  # Optional secondary countries accepted for direct employment / relocation
+  allowed_locations: []
+  # Optional: drop hybrid/on-site roles outside `city`
+  remote_only: false
+  city: ""
+  contract_preference: "Employee contract (direct entity or EOR)"
   website: "https://example.com"
 
-# Target compensation tiers (in EUR equivalent) used for salary scoring & notification alerts
+# Salary tiers (EUR equivalent). Omit a tier to disable it.
 compensation:
   currency: "EUR"
-  target_high: 150000    # Top tier compensation bonus (+35 score) and notification bypass
-  target_mid: 120000     # Mid tier compensation bonus (+25 score)
-  target_low: 85000      # Baseline acceptable compensation (+15 score)
+  target_high: 150000    # +35 score
+  target_mid: 120000     # +25 score
+  target_low: 85000      # +15 score; below it -10
 
-# High-level domain pillars used for context & profile matching
+# Domain pillars (context for you and for an LLM generating targets / skill_matrix)
 deep_domain_expertise:
-  - category: "eBPF & Dynamic Binary Instrumentation"
-    description: "Runtime test coverage and observability using eBPF uprobes/uretprobes, dynamic binary instrumentation, and kernel ftrace."
-    keywords: ["ebpf", "bpf", "uprobe", "uretprobe", "pintool", "ftrace", "dlopen", "elf"]
+  - category: "Cloud Platform & Kubernetes"
+    description: "Kubernetes operations, infrastructure as code, cloud networking."
+    keywords: ["kubernetes", "terraform", "aws", "gcp", "helm"]
+  - category: "Linux Systems & Observability"
+    description: "Linux internals, eBPF tracing, metrics and logging pipelines."
+    keywords: ["linux", "ebpf", "prometheus", "opentelemetry"]
+  - category: "Backend Languages"
+    description: "Services and tooling in Go and Python."
+    keywords: ["go", "golang", "python"]
 
-  - category: "Linux Kernel Security, Sandboxing & Capabilities"
-    description: "Linux kernel sandboxing: Landlock LSM, Linux Capabilities, and seccomp syscall filtering."
-    keywords: ["landlock", "capabilities", "seccomp", "syscall", "sandboxing", "gdb"]
-
-  - category: "OS Reliability, Kernel Testing & Fault Injection"
-    description: "Operating system qualification, Linux Test Project (LTP), network namespace fault injection with tc/netem."
-    keywords: ["ltp", "linux test project", "kexec", "netns", "tc", "netem", "dm-flakey", "fault injection"]
-
-  - category: "Container Runtimes & systemd Plumbing"
-    description: "Container daemonization with Podman Quadlets, rootless containers, and systemd socket activation."
-    keywords: ["quadlets", "podman", "rootless", "systemd", "socket activation", "cgroups", "namespaces"]
-
-  - category: "Core Systems Programming & Languages"
-    description: "Concurrent systems programming in Go, C/C++, Rust, and low-level Linux IPC."
-    keywords: ["golang", "go", "c", "c++", "rust", "d-bus", "dbus", "rpm"]
-
-# Scoring weights applied to keywords found in job titles and descriptions
+# Keyword weights for job titles and descriptions
 scoring_weights:
   title_keywords:
-    linux: 30
-    systems: 30
-    kernel: 35
-    ebpf: 35
     platform: 25
-    runtime: 25
-    observability: 25
     infrastructure: 20
-    storage: 20
-    virtualization: 25
     sre: 25
     devops: 20
+    cloud: 20
+    linux: 20
+    kubernetes: 20
   body_keywords:
-    ebpf: 25
-    kernel: 20
-    uprobe: 20
-    ftrace: 15
-    linux: 15
-    systemd: 15
-    c: 15
-    golang: 15
-    go: 15
-    landlock: 20
-    containers: 15
-    podman: 15
-    qemu: 15
-    ltp: 20
-    packaging: 15
     kubernetes: 15
-    sre: 20
-    devops: 15
+    terraform: 15
+    linux: 15
+    ebpf: 15
+    go: 15
+    golang: 15
+    python: 15
+    aws: 10
+    observability: 15
 
-# Optional custom skill matrix for the semantic matcher & tailored pitch generator.
-# If omitted or empty, Job Radar uses its standard built-in systems engineering matrix.
-# skill_matrix:
-#   - pattern: "\\bebpf\\b|\\bbpf\\b|\\buprobe\\b|\\bftrace\\b"
-#     name: "eBPF & Kernel Tracing"
-#     weight: 30
-#     pitch: "Highlight extensive background in non-intrusive eBPF runtime observability and tracing."
+# Skill matrix: regex -> skill name, weight, tailored pitch bullet.
+# match % = sum(weights of matched skills) / 80, capped at 100.
+skill_matrix:
+  - pattern: "\\bkubernetes\\b|\\bk8s\\b|\\bhelm\\b"
+    name: "Kubernetes"
+    weight: 25
+    pitch: "Highlight running production Kubernetes clusters and their upgrade/incident history."
+  - pattern: "\\bcloud\\b|\\baws\\b|\\bgcp\\b|\\bazure\\b"
+    name: "Cloud Platform"
+    weight: 20
+    pitch: "Reference cloud infrastructure you designed or operated, with scale numbers."
+  - pattern: "\\bebpf\\b|\\bkernel\\b|\\btracing\\b|\\buprobes?\\b"
+    name: "Linux Kernel & eBPF"
+    weight: 25
+    pitch: "Point to concrete kernel or eBPF tracing work and what it uncovered."
+  - pattern: "\\bgolang\\b|\\bgo\\b"
+    name: "Go"
+    weight: 20
+    pitch: "Mention Go services or tools you shipped."
+  - pattern: "\\bpython\\b"
+    name: "Python Automation"
+    weight: 15
+    pitch: "Mention Python automation that saved measurable time."
+  - pattern: "\\bobservability\\b|\\bprometheus\\b|\\bopentelemetry\\b|\\bmonitoring\\b"
+    name: "Observability"
+    weight: 15
+    pitch: "Describe a metrics/alerting pipeline you built and the incidents it caught."
+
+# Pitch bullets used when no skill_matrix entry matches
+fallback_pitch:
+  - "Highlight your platform engineering background and the scale you operated at."

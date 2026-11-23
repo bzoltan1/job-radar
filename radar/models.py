@@ -69,7 +69,7 @@ class CompanyTarget:
     board: str = ""
     entity_in_home_country: bool = False
     eor_supported: bool = True
-    allow_austria: bool = False
+    allowed_countries: List[str] = field(default_factory=list)  # extra countries accepted for this company only
     notes: str = ""
     site: str = "jobs"
     sub_domain: str = "wd5"

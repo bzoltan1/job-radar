@@ -117,21 +117,19 @@ class SalaryStage(PipelineStage):
         tags = []
         norm = salary_info.norm_max_eur
 
-        tiers = get_salary_expectations()
-        high = tiers.get("high", 150000)
-        mid = tiers.get("mid", 120000)
-        low = tiers.get("low", 85000)
+        tiers = get_salary_expectations()  # unset tier (None) is skipped
+        high, mid, low = tiers["high"], tiers["mid"], tiers["low"]
 
-        if norm >= high:
+        if high is not None and norm >= high:
             score_delta += 35
             tags.append(f"pay:{salary_info.display}(>{high // 1000}k)")
-        elif norm >= mid:
+        elif mid is not None and norm >= mid:
             score_delta += 25
             tags.append(f"pay:{salary_info.display}(>{mid // 1000}k)")
-        elif norm >= low:
+        elif low is not None and norm >= low:
             score_delta += 15
             tags.append(f"pay:{salary_info.display}(>={low // 1000}k)")
-        elif 0 < norm < low:
+        elif low is not None and 0 < norm < low:
             score_delta -= 10
             tags.append(f"pay:{salary_info.display}(<{low // 1000}k)")
 

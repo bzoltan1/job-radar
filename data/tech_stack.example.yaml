@@ -1,5 +1,5 @@
 # Example Tech Stack Configuration for Job Radar
-# Copy this file to data/tech_stack.yaml and customize with your tracked technologies.
+# Copy this file to data/tech_stack.local.yaml and customize with your tracked technologies.
 
 tech_stack:
   - name: "golang"
@@ -12,8 +12,6 @@ tech_stack:
     pattern: "\\brust\\b"
   - name: "python"
     pattern: "\\bpython\\b"
-  - name: "crystal"
-    pattern: "\\bcrystal\\b"
   - name: "cloud"
     pattern: "\\bcloud\\b"
   - name: "aws"

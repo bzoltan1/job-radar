@@ -10,102 +10,85 @@ Automated job discovery, ATS scraping, and semantic scoring engine targeting Lin
 
 ---
 
-## 🚀 Quickstart & Adoption Guide
-
-### 1. Prerequisites & Installation
-
-Clone the repository and install dependencies with `uv`:
+## 🚀 Quickstart
 
 ```bash
-git clone https://github.com/your-username/job-radar.git
+git clone https://github.com/ilmanzo/job-radar.git
 cd job-radar
-
-# Create virtualenv and sync dependencies
-uv sync
-
-# Run tests
-uv run pytest
+uv sync            # or: pip install -r requirements.txt
+uv run pytest      # tests run against the committed example data only
 ```
 
-*(Alternatively, traditional `pip install -r requirements.txt` remains supported).*
+The repository ships **generic code and example data only**. Your personal setup (country, salary, skills, companies, research notes) lives in git-ignored files, so you can pull updates (or publish your fork) without leaking it.
 
-### 2. Configure Environment (`.env`)
+---
 
-Copy `.env.example` to `.env`:
+## 🧑‍💻 Personalize
+
+### How config is resolved
+
+Each data file is looked up in this order: **env var → `data/<name>.local.yaml` (git-ignored, yours) → committed example**. Nothing personal has a built-in default in code. If your country isn't configured, `sync` stops with an error.
+
+| What | Your file (git-ignored) | Env override | Committed template |
+|------|------------------------|--------------|--------------------|
+| Profile: country, salary tiers, skills, pitches | `data/profile.local.yaml` | `JOB_RADAR_PROFILE` | `data/profile.example.yaml` |
+| Companies to track | `data/targets.local.yaml` | `JOB_RADAR_TARGETS` | `data/targets.example.yaml` |
+| Tech keywords | `data/tech_stack.local.yaml` | `JOB_RADAR_TECH_STACK` | `data/tech_stack.example.yaml` |
+| Country/city table | `data/countries.local.yaml` | `JOB_RADAR_COUNTRIES` | `data/countries.yaml` |
+| Company dossiers | `data/intel.local/<id>.yaml` | `JOB_RADAR_INTEL_DIR` | `data/intel.example.yaml` |
+| Secrets, thresholds, vault | `.env` | (env itself) | `.env.example` |
+| Database, feed | `jobs.db`, `feed.xml` | `JOB_RADAR_DB`, `JOB_RADAR_FEED` | — |
+
+Env vars (`CANDIDATE_COUNTRY`, `CANDIDATE_ALLOWED_COUNTRIES`, `CANDIDATE_REMOTE_ONLY`, `CANDIDATE_CITY`) override the profile. See `.env.example`.
+
+### Steps
 
 ```bash
-cp .env.example .env
+cp .env.example .env                                   # Telegram, thresholds, Obsidian vault
+cp data/profile.example.yaml data/profile.local.yaml   # set candidate.location (required)
+# build data/targets.local.yaml from your CV (below), or start from the example:
+cp data/targets.example.yaml data/targets.local.yaml
+python3 radar.py sync --company <one_id> --sinks db    # smoke test
 ```
 
-Edit `.env` to configure your credentials, paths, and country:
+If your country isn't in `data/countries.yaml`, add it there (aliases + cities). That's a generic improvement, so send it upstream. Put only personal tweaks (e.g. your small home town) in `data/countries.local.yaml`.
 
-```bash
-# --- Candidate Location & Eligibility ---
-# Primary country of residence (e.g. Italy, Germany, France, Spain, United Kingdom, Canada, US, etc.)
-CANDIDATE_COUNTRY="Italy"
-# Comma-separated secondary countries for direct employment or relocation
-CANDIDATE_ALLOWED_COUNTRIES="Austria"
+### Generate your company list and skill matrix from your CV with an LLM
 
-# --- Telegram Notifications (Optional) ---
-TELEGRAM_BOT_TOKEN="your_bot_token_from_botfather"
-TELEGRAM_CHAT_ID="your_telegram_chat_id"
+Feed your CV (plus links to your blog or projects if you like) to an LLM with this prompt, then review the output by hand. LLMs invent ATS board ids, so check every company with `python3 radar.py sync --company <id> --sinks db`: `Found: 0` usually means a wrong `ats`/`board`.
 
-# Minimum score or salary to trigger a Telegram alert
-JOB_RADAR_NOTIFY_MIN_SCORE=85
-JOB_RADAR_NOTIFY_MIN_SALARY=90000
+```text
+You are helping me configure Job Radar, a job-board scraper. Attached is my CV.
+I live in <COUNTRY> and can also work in <OTHER COUNTRIES>. I want <ROLE TYPES>, <remote/hybrid>.
 
-# --- Obsidian Vault Export (Optional) ---
-OBSIDIAN_VAULT_PATH="~/vault/career"
+1. Produce data/targets.local.yaml: 30-60 companies that hire for my profile and can employ
+   people in my country (local entity or Employer of Record). Use exactly this schema per entry:
+     - id: lowercase-slug
+       name: "Company"
+       tier: big_tech | enterprise_infra | scaleup
+       category: "short domain label"
+       ats: greenhouse | lever | ashby | workday | smartrecruiters | recruitee | workable | deel
+       board: <ATS board id, e.g. the slug in boards.greenhouse.io/<board> or jobs.lever.co/<board>>
+       # workday only: site: <site>, sub_domain: wd1..wd12, search_text: <optional filter>
+       entity_in_home_country: true|false   # legal entity in MY country
+       eor_supported: true|false
+       allowed_countries: []                 # optional extra countries for this company only
+       notes: "why this company fits me, in one line"
+   Only use companies whose careers page runs on one of those ATSs; say "unsure" in notes
+   when you are not certain of the board id.
 
-# --- Candidate Profile Overrides (Optional) ---
-# Path to custom profile YAML (defaults to data/profile.local.yaml, data/profile.yaml, or data/profile.example.yaml)
-# JOB_RADAR_PROFILE="data/profile.yaml"
+2. Produce the `skill_matrix`, `scoring_weights` and `deep_domain_expertise` sections of
+   data/profile.local.yaml, following the format of data/profile.example.yaml (pasted below).
+   skill_matrix entries: regex pattern (lowercase, \\b word boundaries), skill name, weight
+   (10-30, higher = rarer/more valuable skill of mine), and a one-sentence pitch citing a
+   concrete achievement from my CV.
+
+<paste data/profile.example.yaml here>
 ```
 
-### 3. Customize Candidate Profile (`data/profile.yaml`)
+### Keep your setup outside the checkout (multiple machines, public fork)
 
-Job Radar uses your career profile to calculate semantic match percentages and generate tailored application pitches.
-
-Copy the template:
-```bash
-cp data/profile.example.yaml data/profile.yaml
-```
-
-Edit `data/profile.yaml`:
-- **`candidate`**: Set your name, headline, current role, years of experience, and home country.
-- **`compensation`**: Define target salary tiers (in EUR equivalent) for scoring boosts.
-- **`deep_domain_expertise`**: Define your core technical pillars.
-- **`scoring_weights`**: Customize keyword bonuses for titles and job descriptions.
-- **`skill_matrix`** (Optional): Add custom regex patterns and tailored pitch suggestions.
-
-> **Tip:** You can also save a private local override at `data/profile.local.yaml`, which is automatically recognized and ignored by git.
-
-### 4. Customize Target Companies (`data/targets.yaml`)
-
-`data/targets.yaml` defines the companies and ATS endpoints to track. Over 50 top tech companies (Cloudflare, Datadog, GitLab, Nebius, ElevenLabs, etc.) are pre-configured.
-
-To add a new company:
-```yaml
-companies:
-  - id: examplecorp
-    name: "Example Corp"
-    tier: scaleup
-    category: "Cloud Infrastructure"
-    ats: greenhouse         # greenhouse, lever, ashby, workday, deel, recruitee, workable, smartrecruiters, or scraper
-    board: examplecorp      # ATS board identifier (or scraper_id when ats is scraper)
-    entity_in_home_country: false  # Home-country legal entity presence
-    eor_supported: true     # Supports Employer of Record
-    notes: "Distributed systems, Go & Rust."
-```
-
-*(For non-ATS sites, see [ARCHITECTURE.md](ARCHITECTURE.md#adding-a-custom-html-scraper-plugin-non-ats-sites) to create a custom HTML scraper plugin in `radar/scrapers/`).*
-
-Or discover and add companies interactively via CLI:
-```bash
-python3 radar.py discover list
-python3 radar.py discover cncf "runtime"
-python3 radar.py discover add sysdig
-```
+Put your personal files in a **separate private git repo** (e.g. `~/job-radar-private/`) and point the env vars from `.env` at it (`JOB_RADAR_PROFILE`, `JOB_RADAR_TARGETS`, `JOB_RADAR_INTEL_DIR`, ...; see `.env.example`). The public checkout then stays a clean clone: `git pull` never touches your data, and your setup is versioned and synced on its own.
 
 ---
 
@@ -126,6 +109,15 @@ Sync only a single target company:
 ```bash
 python3 radar.py sync --company cloudflare
 ```
+
+### Discover Companies
+Browse the built-in peer catalog and the CNCF landscape; `add` appends to `data/targets.local.yaml` (or `$JOB_RADAR_TARGETS`):
+```bash
+python3 radar.py discover list
+python3 radar.py discover cncf "runtime"
+python3 radar.py discover add sysdig
+```
+Non-ATS career sites need an HTML scraper plugin: see [ARCHITECTURE.md](ARCHITECTURE.md#adding-a-custom-html-scraper-plugin-non-ats-sites).
 
 ### Explore Matched Roles
 View roles sorted by **Profile Match %**:
@@ -171,7 +163,7 @@ Central store for all tracked roles, historical states, and notification timesta
 Every `sync` generates a standard RSS feed at `feed.xml`. Subscribe using any feed reader (**newsboat**, Thunderbird, Feedly, NetNewsWire).
 
 ### 3. Obsidian Vault
-When configured, exports structured notes into your Obsidian vault:
+When `OBSIDIAN_VAULT_PATH` is set (otherwise the sink is skipped), exports structured notes into your vault:
 - **`jobs/offers/`**: One markdown file per role with YAML frontmatter, compensation breakdown, match percentage, and tailored pitch points. User edits in `## My Notes` or status changes are **strictly preserved** across runs.
 - **`jobs/companies/`**: Dossiers with Glassdoor ratings, remote policy, EMEA compensation benchmarks, and interview pipeline stages.
 - **`Job Radar Dashboard.md`**: Master dashboard with a Dataview pipeline table and static fallback tables.
@@ -210,38 +202,7 @@ To run Job Radar automatically in the background on Linux:
 
 ## 🧩 Architecture
 
-```
-[data/targets.yaml]
-        │
-        ▼
-┌─────────────────────────┐
-│   Source Plugins (ATS)  │ ◄── greenhouse, ashby, lever, workday, workable, etc.
-└───────────┬─────────────┘
-            │  list[RawJob]
-            ▼
-┌─────────────────────────┐
-│     Pipeline Stages     │
-│  1. TitleFilterStage    │ ◄── drops non-engineering / irrelevant roles
-│  2. LocationStage       │ ◄── candidate country, EMEA remote, non-EU filter
-│  3. ContractStage       │ ◄── penalizes/drops B2B contractor roles
-│  4. RoleSeniorityStage  │ ◄── systems/platform relevance & seniority boost
-│  5. SalaryStage         │ ◄── EUR normalization & compensation tiers
-│  6. ProfileMatchStage   │ ◄── semantic skill matrix match & tailored pitch
-│  7. FreshnessStage      │ ◄── age scoring decay
-└───────────┬─────────────┘
-            │  Job (scored & tagged)
-            ▼
-┌─────────────────────────┐
-│   Output Sink Plugins   │
-│  - DatabaseSink         │ ──► sqlite jobs.db
-│  - RssSink              │ ──► feed.xml (RSS 2.0)
-│  - ObsidianSink         │ ──► Vault notes, Kanban, Dataview dashboard
-│  - TelegramSink         │ ──► Bot notifications for new top matches
-│  - DesktopSink          │ ──► notify-send alerts
-└─────────────────────────┘
-```
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for details on writing custom ATS plugins and pipeline stages.
+Sources → pipeline stages → sinks, all plugin-based. Diagram, layout and how to add sources, scrapers, stages and sinks: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 

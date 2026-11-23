@@ -12,3 +12,6 @@ feed.xml
 data/*.local.yaml
 config.yaml
 data/settings.yaml
+
+# Personal data (see README "Personalize")
+data/intel.local/

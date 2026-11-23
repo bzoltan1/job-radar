@@ -222,6 +222,9 @@ class ObsidianSink(BaseSink):
 
     def export(self, jobs: List[Job], context: Dict[str, Any]):
         vault_path = context.get("vault_path") or get_obsidian_vault_path()
+        if not vault_path:
+            print("[-] Obsidian: vault not configured (OBSIDIAN_VAULT_PATH); skipping.", file=sys.stderr)
+            return
         if not os.path.exists(vault_path):
             try:
                 os.makedirs(vault_path, exist_ok=True)
