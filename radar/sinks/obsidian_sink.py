@@ -1,6 +1,8 @@
 """Obsidian vault export sink plugin."""
 
 import datetime
+import hashlib
+import json
 import os
 import re
 import sys
@@ -22,6 +24,42 @@ def sanitize_filename(name: str) -> str:
     return cleaned[:80]
 
 
+def yq(value: Any) -> str:
+    """Quote a value as a YAML double-quoted scalar (JSON strings are valid YAML)."""
+    return json.dumps(str(value), ensure_ascii=False)
+
+
+def company_note_name(cid: str, info: dict) -> str:
+    return sanitize_filename(info.get("name", cid.capitalize()))
+
+
+def assign_note_names(offers_dir: str, jobs: List[Job], intel_data: dict) -> Dict[str, str]:
+    """Map job id -> unique note filename (without .md).
+
+    Jobs sharing "<company> - <title>" (same role in several locations) would overwrite one
+    note. The first claimant keeps the plain name (so existing notes stay put); others get a
+    stable hash suffix. A note on disk is owned by the job_id in its frontmatter.
+    """
+    claimed: Dict[str, str] = {}
+    names: Dict[str, str] = {}
+    for j in jobs:
+        comp = company_note_name(j.company_id, intel_data.get(j.company_id, {}))
+        name = sanitize_filename(f"{comp} - {j.title}")
+        owner = claimed.get(name) or _disk_owner(os.path.join(offers_dir, f"{name}.md"))
+        if owner not in (None, j.id):
+            name = f"{name} {hashlib.sha1(j.id.encode()).hexdigest()[:6]}"
+        claimed[name] = j.id
+        names[j.id] = name
+    return names
+
+
+def _disk_owner(path: str) -> Optional[str]:
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        return parse_existing_frontmatter(f.read())[0].get("job_id") or None
+
+
 def parse_existing_frontmatter(content: str) -> Tuple[Dict[str, str], str]:
     m = re.match(r"^---\n(.*?)\n---\n(.*)$", content, re.DOTALL)
     if not m:
@@ -31,7 +69,11 @@ def parse_existing_frontmatter(content: str) -> Tuple[Dict[str, str], str]:
     for line in yaml_text.splitlines():
         if ":" in line and not line.startswith(" ") and not line.startswith("-"):
             k, v = line.split(":", 1)
-            meta[k.strip()] = v.strip().strip('"').strip("'")
+            v = v.strip()
+            try:
+                meta[k.strip()] = json.loads(v) if v.startswith('"') else v.strip("'")
+            except ValueError:
+                meta[k.strip()] = v.strip('"')
     return meta, body
 
 
@@ -70,7 +112,7 @@ def update_frontmatter_for_archive(content: str, today_str: str) -> str:
     return f"---\n{chr(10).join(new_lines)}\n---\n" + body
 
 
-def export_company_dossiers(vault_path: str, intel_data: dict, jobs: List[Job]):
+def export_company_dossiers(vault_path: str, intel_data: dict, jobs: List[Job], note_names: Dict[str, str]):
     comp_dir = os.path.join(vault_path, "jobs", "companies")
     os.makedirs(comp_dir, exist_ok=True)
     cand_info = get_candidate_info()
@@ -79,14 +121,14 @@ def export_company_dossiers(vault_path: str, intel_data: dict, jobs: List[Job]):
     country_name = loc_cfg["home_country"].capitalize()
 
     for cid, info in intel_data.items():
-        comp_name = info.get("name", cid.capitalize())
+        comp_name = company_note_name(cid, info)
         file_path = os.path.join(comp_dir, f"{comp_name}.md")
 
         comp_jobs = [j for j in jobs if j.company_id == cid]
         jobs_md = ""
         for cj in comp_jobs[:10]:
             sal = cj.salary.display if cj.salary.display else "Not disclosed"
-            base_job = sanitize_filename(f"{comp_name} - {cj.title}")
+            base_job = note_names[cj.id]
             jobs_md += f"- [[{base_job}|{cj.title}]] — `{sal}` (Score: {cj.score}, Match: {cj.profile.match_pct}%)\n"
 
         if not jobs_md:
@@ -106,15 +148,15 @@ def export_company_dossiers(vault_path: str, intel_data: dict, jobs: List[Job]):
         entity_val = info.get("home_legal_entity", "N/A")
 
         content = f"""---
-title: "{comp_name}"
-tier: "{info.get('tier', 'Unknown')}"
+title: {yq(comp_name)}
+tier: {yq(info.get('tier', 'Unknown'))}
 glassdoor_rating: {info.get('glassdoor_rating', 0.0)}
-recommend_rate: "{info.get('recommend_to_friend', 'N/A')}"
-ceo_approval: "{info.get('ceo_approval', 'N/A')}"
-home_legal_entity: "{entity_val}"
-contract_type: "{info.get('contract_type', 'N/A')}"
-remote_policy: "{info.get('remote_policy', 'N/A')}"
-emea_staff_comp: "{info.get('emea_staff_comp_range', 'N/A')}"
+recommend_rate: {yq(info.get('recommend_to_friend', 'N/A'))}
+ceo_approval: {yq(info.get('ceo_approval', 'N/A'))}
+home_legal_entity: {yq(entity_val)}
+contract_type: {yq(info.get('contract_type', 'N/A'))}
+remote_policy: {yq(info.get('remote_policy', 'N/A'))}
+emea_staff_comp: {yq(info.get('emea_staff_comp_range', 'N/A'))}
 tags:
   - company-intel
   - company/{cid}
@@ -158,7 +200,7 @@ tags:
             f.write(content.strip() + "\n")
 
 
-def write_dashboard(path: str, jobs: List[Job], intel_data: dict):
+def write_dashboard(path: str, jobs: List[Job], intel_data: dict, note_names: Dict[str, str]):
     cand_info = get_candidate_info()
     cand_name = cand_info.get("name", "Candidate")
     loc_cfg = get_location_config()
@@ -181,7 +223,7 @@ tags:
 ## 🏛️ Tracked Company Dossiers (Reviews & Interview Guides)
 """
     for cid, c_info in intel_data.items():
-        name = c_info.get("name", cid.capitalize())
+        name = company_note_name(cid, c_info)
         rating = c_info.get("glassdoor_rating", "N/A")
         entity = c_info.get("home_legal_entity", "N/A")
         comp = c_info.get("emea_staff_comp_range", "N/A")
@@ -208,8 +250,8 @@ SORT score DESC, profile_match_pct DESC
 """
     sorted_jobs = sorted(jobs, key=lambda x: x.score, reverse=True)
     for j in sorted_jobs[:25]:
-        comp_display = intel_data.get(j.company_id, {}).get("name", j.company_id.capitalize())
-        base_name = sanitize_filename(f"{comp_display} - {j.title}")
+        comp_display = company_note_name(j.company_id, intel_data.get(j.company_id, {}))
+        base_name = note_names[j.id]
         sal_disp = j.salary.display if j.salary.display else "—"
         content += f"| **{j.score}** | {j.profile.match_pct}% | {sal_disp} | [[{comp_display}]] | [{j.title}]({j.url}) | `{j.location[:25]}` | [[{base_name}]] |\n"
 
@@ -239,7 +281,8 @@ class ObsidianSink(BaseSink):
         os.makedirs(companies_dir, exist_ok=True)
 
         intel_data = load_all_intel()
-        export_company_dossiers(vault_path, intel_data, jobs)
+        note_names = assign_note_names(offers_dir, jobs, intel_data)
+        export_company_dossiers(vault_path, intel_data, jobs, note_names)
 
         cand_info = get_candidate_info()
         cand_name = cand_info.get("name", "Candidate")
@@ -254,10 +297,9 @@ class ObsidianSink(BaseSink):
         for j in jobs:
             cid = j.company_id
             c_info = intel_data.get(cid, {})
-            comp_display = c_info.get("name", cid.capitalize())
+            comp_display = company_note_name(cid, c_info)
             title = j.title
-            base_name = sanitize_filename(f"{comp_display} - {title}")
-            file_path = os.path.join(offers_dir, f"{base_name}.md")
+            file_path = os.path.join(offers_dir, f"{note_names[j.id]}.md")
 
             status = "new"
             user_notes = ""
@@ -295,18 +337,19 @@ class ObsidianSink(BaseSink):
             )
 
             note_content = f"""---
-title: "{title}"
-company: "{cid}"
-company_note: "{comp_display}"
+job_id: {yq(j.id)}
+title: {yq(title)}
+company: {yq(cid)}
+company_note: {yq(comp_display)}
 score: {j.score}
 profile_match_pct: {match_pct}
-salary: "{salary_disp}"
+salary: {yq(salary_disp)}
 salary_norm_eur: {j.salary.norm_max_eur}
-location: "{j.location}"
+location: {yq(j.location)}
 home_direct: {bool(is_direct_home)}
-home_entity: "{home_entity}"
-status: "{status}"
-url: "{j.url}"
+home_entity: {yq(home_entity)}
+status: {yq(status)}
+url: {yq(j.url)}
 date_updated: "{datetime.date.today().isoformat()}"
 tags:
   - job-radar
@@ -345,5 +388,5 @@ tags:
                 f.write(note_content.strip() + "\n")
 
         dashboard_path = os.path.join(jobs_root, "Job Radar Dashboard.md")
-        write_dashboard(dashboard_path, jobs, intel_data)
+        write_dashboard(dashboard_path, jobs, intel_data, note_names)
         print(f"[+] Obsidian export: {exported_count} new, {updated_count} updated.")
