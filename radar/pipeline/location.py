@@ -8,9 +8,12 @@ from radar.models import Job, PipelineContext, RawJob
 from radar.pipeline.base import PipelineStage, StageResult
 
 LOCATION_EMEA_REMOTE_RE = re.compile(
-    r"\b(emea|europe|worldwide|anywhere|global)\b",
+    r"\b(emea|europe|eu|european union|worldwide|anywhere|global)\b",
     re.IGNORECASE,
 )
+
+# Location is only a remote marker, with no country: treated as global remote.
+BARE_REMOTE_RE = re.compile(r"^(fully |100% |globally )?(remote|distributed)$", re.IGNORECASE)
 
 NON_EU_DISQUALIFY_RE = re.compile(
     r"\b(us only|united states only|americas only|apac only|canada only|india only|latam only|"
@@ -70,7 +73,7 @@ class LocationStage(PipelineStage):
 
         # Check remote indicators
         is_title_geo = bool(re.search(r"\b(emea|europe)\b", title, re.IGNORECASE))
-        is_loc_geo = bool(LOCATION_EMEA_REMOTE_RE.search(location)) or (location.strip().lower() in ("remote", "distributed"))
+        is_loc_geo = bool(LOCATION_EMEA_REMOTE_RE.search(location)) or bool(BARE_REMOTE_RE.match(location.strip()))
         is_remote_keyword = bool(re.search(r"\b(remote|distributed|telecommute|work from home|flexible)\b", f"{title} {location}", re.IGNORECASE))
         is_content_remote = bool(re.search(rf"\b(100% remote|fully remote|work from anywhere|remote within {re.escape(home_country)})\b", raw_job.content or "", re.IGNORECASE))
         is_remote = is_title_geo or is_loc_geo or is_remote_keyword or is_content_remote

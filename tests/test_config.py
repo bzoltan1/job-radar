@@ -177,6 +177,23 @@ class TestConfigAndEnvironment(unittest.TestCase):
         self.assertNotIn("loc:foreign_restriction(-40)", res.tags)
         self.assertEqual(res.score_delta, 10)  # emea_remote bonus
 
+    def test_location_eu_and_bare_remote_are_emea_remote(self):
+        target = CompanyTarget(id="testcomp", name="Test Comp")
+        ctx = PipelineContext(target=target)
+        with patch.dict(os.environ, {"CANDIDATE_COUNTRY": "Germany", "CANDIDATE_REMOTE_ONLY": "false"}, clear=True):
+            for loc in ("Remote (EU)", "Remote - EU", "European Union", "Fully Remote", "Remote"):
+                raw = RawJob(id="e", company_id="testcomp", title="Platform Engineer", location=loc, url="")
+                res = LocationStage().process(raw, Job(id="e", company_id="testcomp", title=raw.title, location=loc, url=""), ctx)
+                self.assertTrue(res.should_continue, loc)
+                self.assertIn("loc:emea_remote", res.tags, loc)
+
+    def test_location_eu_regex_not_substring(self):
+        target = CompanyTarget(id="testcomp", name="Test Comp")
+        with patch.dict(os.environ, {"CANDIDATE_COUNTRY": "Germany", "CANDIDATE_REMOTE_ONLY": "false"}, clear=True):
+            raw = RawJob(id="e", company_id="testcomp", title="Platform Engineer", location="Remote - Peru", url="")
+            res = LocationStage().process(raw, Job(id="e", company_id="testcomp", title=raw.title, location=raw.location, url=""), PipelineContext(target=target))
+            self.assertFalse(res.should_continue)
+
     def test_location_stage_remote_only_filters(self):
         stage = LocationStage()
         target = CompanyTarget(id="testcomp", name="Test Comp")
