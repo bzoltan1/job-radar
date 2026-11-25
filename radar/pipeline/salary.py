@@ -2,7 +2,7 @@
 
 import html
 import re
-from typing import Dict, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from radar.config import get_salary_expectations
 from radar.models import Job, PipelineContext, RawJob, SalaryInfo
@@ -15,11 +15,60 @@ CURRENCY_RATES = {
     "CHF": 1.05,
 }
 
+_SYMBOLS = {"$": "USD", "€": "EUR", "£": "GBP"}
+_CUR = r"[€$£]|EUR|USD|GBP|CHF"
+_AMOUNT = r"[0-9]{2,3}(?:[,\.][0-9]{3})+"  # 120,000 / 120.000
+_K = r"[0-9]{2,3}(?:\.[0-9]+)?"  # 120 / 120.5 (followed by k)
+_SEP = r"\s*(?:-|to|–|and)\s*"
+MIN_PLAUSIBLE, MAX_PLAUSIBLE = 25000, 700000  # yearly, any currency; filters hourly rates, equity, phone numbers
+
+_RANGE_CUR_FIRST = re.compile(rf"({_CUR})\s*({_AMOUNT}){_SEP}({_CUR})?\s*({_AMOUNT})", re.IGNORECASE)
+_RANGE_CUR_LAST = re.compile(rf"({_AMOUNT}){_SEP}({_AMOUNT})\s*({_CUR})", re.IGNORECASE)
+_RANGE_K = re.compile(rf"({_CUR})?\s*({_K})\s*k{_SEP}({_CUR})?\s*({_K})\s*k", re.IGNORECASE)
+_SINGLE_K = re.compile(rf"({_CUR})\s*({_K})\s*k\b", re.IGNORECASE)
+
+
+def _currency(token: Optional[str]) -> str:
+    """Currency symbol or code (any case) -> ISO code; USD when absent."""
+    return _SYMBOLS.get(token, (token or "USD").upper())
+
+
+def _digits(s: str) -> int:
+    return int(re.sub(r"[,.]", "", s))
+
 
 def normalize_to_eur(val: int, currency: str) -> int:
-    """Normalize foreign salary amount to EUR equivalent."""
-    rate = CURRENCY_RATES.get(currency.upper(), 0.92)
-    return int(val * rate)
+    """Normalize a salary amount to EUR; 0 for a currency without a known rate (never guess)."""
+    rate = CURRENCY_RATES.get(currency.upper())
+    return int(val * rate) if rate else 0
+
+
+def _find_amounts(text: str) -> List[Tuple[int, int, str]]:
+    """All plausible (min, max, currency) salary mentions in free text."""
+    found = []
+    for m in _RANGE_CUR_FIRST.finditer(text):
+        c1, s1, _c2, s2 = m.groups()
+        found.append((_digits(s1), _digits(s2), _currency(c1)))
+    for m in _RANGE_CUR_LAST.finditer(text):
+        s1, s2, c = m.groups()
+        found.append((_digits(s1), _digits(s2), _currency(c)))
+    for m in _RANGE_K.finditer(text):
+        c1, s1, c2, s2 = m.groups()
+        found.append((int(float(s1) * 1000), int(float(s2) * 1000), _currency(c1 or c2)))
+    for m in _SINGLE_K.finditer(text):
+        c, s = m.groups()
+        v = int(float(s) * 1000)
+        found.append((v, v, _currency(c)))
+    return [
+        (min(lo, hi), max(lo, hi), cur)
+        for lo, hi, cur in found
+        if MIN_PLAUSIBLE <= max(lo, hi) <= MAX_PLAUSIBLE
+    ]
+
+
+def _salary_info(vmin: int, vmax: int, currency: str) -> SalaryInfo:
+    disp = f"{currency} {vmin // 1000}k-{vmax // 1000}k" if vmin not in (0, vmax) else f"{currency} {vmax // 1000}k"
+    return SalaryInfo(min_val=vmin, max_val=vmax, currency=currency, display=disp, norm_max_eur=normalize_to_eur(vmax, currency))
 
 
 def extract_salary(raw_job: RawJob) -> SalaryInfo:
@@ -35,82 +84,20 @@ def extract_salary(raw_job: RawJob) -> SalaryInfo:
             try:
                 vmin = int(float(v.get("min_value", 0)))
                 vmax = int(float(v.get("max_value", 0)))
-                if vmax > 0:
-                    norm = normalize_to_eur(vmax, unit)
-                    disp = f"{unit} {vmin//1000}k-{vmax//1000}k" if vmin > 0 else f"{unit} {vmax//1000}k"
-                    return SalaryInfo(min_val=vmin, max_val=vmax, currency=unit, display=disp, norm_max_eur=norm)
             except (ValueError, TypeError):
-                pass
+                continue
+            if vmax > 0:
+                return _salary_info(vmin, vmax, unit)
 
     content = html.unescape(raw_job.content or "")
     if not content:
         return SalaryInfo()
 
-    text = re.sub(r"<[^>]+>", " ", content)
-
-    p1 = re.compile(
-        r"([€$£]|EUR|USD|GBP|CHF)\s*([0-9]{2,3}(?:[,\.][0-9]{3})+)\s*(?:-|to|–|and)\s*([€$£]|EUR|USD|GBP|CHF)?\s*([0-9]{2,3}(?:[,\.][0-9]{3})+)",
-        re.IGNORECASE,
-    )
-    p2 = re.compile(
-        r"([0-9]{2,3}(?:[,\.][0-9]{3})+)\s*(?:-|to|–|and)\s*([0-9]{2,3}(?:[,\.][0-9]{3})+)\s*([€$£]|EUR|USD|GBP|CHF)",
-        re.IGNORECASE,
-    )
-    p3 = re.compile(
-        r"([€$£]|EUR|USD|GBP|CHF)?\s*([0-9]{2,3}(?:\.[0-9]+)?)\s*k\s*(?:-|to|–|and)\s*([€$£]|EUR|USD|GBP|CHF)?\s*([0-9]{2,3}(?:\.[0-9]+)?)\s*k",
-        re.IGNORECASE,
-    )
-    p4 = re.compile(
-        r"([€$£]|EUR|USD|GBP|CHF)\s*([0-9]{2,3}(?:\.[0-9]+)?)\s*k\b",
-        re.IGNORECASE,
-    )
-
-    matches = []
-    for m in p1.finditer(text):
-        c1, s1, c2, s2 = m.groups()
-        curr = c1 if c1 in ["$", "€", "£", "EUR", "USD", "GBP", "CHF"] else (c2 or "USD")
-        curr = {"$": "USD", "€": "EUR", "£": "GBP"}.get(curr, curr.upper())
-        v1 = int(re.sub(r"[,.]", "", s1))
-        v2 = int(re.sub(r"[,.]", "", s2))
-        vmin, vmax = min(v1, v2), max(v1, v2)
-        if 25000 <= vmax <= 700000:
-            matches.append((vmin, vmax, curr))
-
-    for m in p2.finditer(text):
-        s1, s2, curr = m.groups()
-        curr = {"$": "USD", "€": "EUR", "£": "GBP"}.get(curr, curr.upper())
-        v1 = int(re.sub(r"[,.]", "", s1))
-        v2 = int(re.sub(r"[,.]", "", s2))
-        vmin, vmax = min(v1, v2), max(v1, v2)
-        if 25000 <= vmax <= 700000:
-            matches.append((vmin, vmax, curr))
-
-    for m in p3.finditer(text):
-        c1, s1, c2, s2 = m.groups()
-        curr = c1 or c2 or "USD"
-        curr = {"$": "USD", "€": "EUR", "£": "GBP"}.get(curr, curr.upper())
-        v1 = int(float(s1) * 1000)
-        v2 = int(float(s2) * 1000)
-        vmin, vmax = min(v1, v2), max(v1, v2)
-        if 25000 <= vmax <= 700000:
-            matches.append((vmin, vmax, curr))
-
-    for m in p4.finditer(text):
-        c1, s1 = m.groups()
-        curr = {"$": "USD", "€": "EUR", "£": "GBP"}.get(c1, c1.upper())
-        v = int(float(s1) * 1000)
-        if 25000 <= v <= 700000:
-            matches.append((v, v, curr))
-
-    if matches:
-        eur_matches = [m for m in matches if m[2] == "EUR"]
-        chosen = max(eur_matches, key=lambda x: x[1]) if eur_matches else max(matches, key=lambda x: x[1])
-        vmin, vmax, curr = chosen
-        norm = normalize_to_eur(vmax, curr)
-        disp = f"{curr} {vmin//1000}k-{vmax//1000}k" if vmin != vmax else f"{curr} {vmax//1000}k"
-        return SalaryInfo(min_val=vmin, max_val=vmax, currency=curr, display=disp, norm_max_eur=norm)
-
-    return SalaryInfo()
+    matches = _find_amounts(re.sub(r"<[^>]+>", " ", content))
+    if not matches:
+        return SalaryInfo()
+    eur = [m for m in matches if m[2] == "EUR"]
+    return _salary_info(*max(eur or matches, key=lambda x: x[1]))
 
 
 class SalaryStage(PipelineStage):

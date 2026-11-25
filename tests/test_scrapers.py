@@ -173,5 +173,21 @@ class TestScraperFramework(unittest.TestCase):
             self.assertEqual(sal.norm_max_eur, expected_norm)
 
 
+    def test_salary_currency_edge_cases(self):
+        def ext(content="", metadata=None):
+            return extract_salary(RawJob(id="t", company_id="t", title="T", location="R", url="", content=content,
+                                         metadata={"raw": metadata} if metadata else {}))
+
+        low = ext("Pay: eur 80,000 - 100,000")  # lowercase symbol was mislabelled USD
+        self.assertEqual((low.currency, low.norm_max_eur), ("EUR", 100000))
+        self.assertEqual(ext("80,000 - 100,000 gbp").currency, "GBP")
+        self.assertEqual(ext("EUR 90k and USD 200k").currency, "EUR")  # EUR preferred
+        self.assertEqual(ext("rate $60/hour, range $5,000 - $9,000").display, "")  # implausible
+        inr = ext(metadata=[{"value_type": "currency_range", "value": {"unit": "INR", "min_value": 2000000, "max_value": 3000000}}])
+        self.assertEqual((inr.currency, inr.max_val, inr.norm_max_eur), ("INR", 3000000, 0))  # no rate: never guess
+        gbp = ext(metadata=[{"value_type": "currency_range", "value": {"unit": "gbp", "min_value": 0, "max_value": 100000}}])
+        self.assertEqual((gbp.display, gbp.norm_max_eur), ("GBP 100k", 118000))
+
+
 if __name__ == "__main__":
     unittest.main()
