@@ -85,3 +85,17 @@ class TestAmazonQueries(unittest.TestCase):
         urls = self.fetched_urls(queries=["amazon linux"], country_queries=["go"])
         self.assertTrue(any("base_query=amazon+linux" in u and "country=" not in u for u in urls))
         self.assertTrue(any("country=ITA" in u and "base_query=go" in u for u in urls))
+
+
+class TestPeerCatalog(unittest.TestCase):
+    def test_catalog_loads_with_required_fields(self):
+        from radar.discovery import load_peer_catalog
+
+        peers = load_peer_catalog()
+        self.assertGreater(len(peers), 10)
+        ids = [p["id"] for p in peers]
+        self.assertEqual(len(ids), len(set(ids)))
+        for p in peers:
+            for key in ("id", "name", "category", "tier", "ats", "board", "eor_supported"):
+                self.assertIn(key, p, p["id"])
+            self.assertIsNotNone(get_source(p["ats"]), p["id"])

@@ -1,289 +1,22 @@
 """Company discovery & CNCF landscape exploration."""
 
+import functools
 import json
 import os
 import sys
 import urllib.request
 import yaml
 
-from radar.config import TARGETS_FILE, TARGETS_WRITE_FILE
+from radar.config import DATA_DIR, TARGETS_FILE, TARGETS_WRITE_FILE
 
-PEER_CATALOG = [
-    {
-        "id": "canonical",
-        "name": "Canonical",
-        "category": "Linux & OS",
-        "tier": "enterprise_infra",
-        "ats": "greenhouse",
-        "board": "canonical",
-        "eor_supported": True,
-        "notes": "Ubuntu creators. Home based EMEA/Worldwide.",
-    },
-    {
-        "id": "redhat",
-        "name": "Red Hat",
-        "category": "Linux & OS",
-        "tier": "big_tech",
-        "ats": "workday",
-        "board": "redhat",
-        "site": "jobs",
-        "sub_domain": "wd5",
-        "eor_supported": True,
-        "notes": "Enterprise Linux, OpenShift, Kernel & Systems.",
-    },
-    {
-        "id": "intel",
-        "name": "Intel",
-        "category": "Silicon & Systems",
-        "tier": "big_tech",
-        "ats": "workday",
-        "board": "intel",
-        "site": "External",
-        "sub_domain": "wd1",
-        "eor_supported": True,
-        "notes": "Linux kernel, toolchains, low-level systems.",
-    },
-    {
-        "id": "arm",
-        "name": "Arm",
-        "category": "Silicon & Systems",
-        "tier": "big_tech",
-        "ats": "smartrecruiters",
-        "board": "Arm",
-        "eor_supported": True,
-        "notes": "Arm architecture, Linux kernel enablement, toolchain, firmware.",
-    },
-    {
-        "id": "datadog",
-        "name": "Datadog",
-        "category": "Observability",
-        "tier": "enterprise_infra",
-        "ats": "greenhouse",
-        "board": "datadog",
-        "eor_supported": True,
-        "notes": "Major eBPF, Go, C, Linux kernel observability stack.",
-    },
-    {
-        "id": "grafanalabs",
-        "name": "Grafana Labs",
-        "category": "Observability",
-        "tier": "enterprise_infra",
-        "ats": "greenhouse",
-        "board": "grafanalabs",
-        "eor_supported": True,
-        "notes": "Fully distributed. Go, eBPF, Prometheus.",
-    },
-    {
-        "id": "sysdig",
-        "name": "Sysdig",
-        "category": "Container & eBPF Security",
-        "tier": "enterprise_infra",
-        "ats": "greenhouse",
-        "board": "sysdig",
-        "eor_supported": True,
-        "notes": "eBPF, Falco creators, runtime security agent.",
-    },
-    {
-        "id": "cloudflare",
-        "name": "Cloudflare",
-        "category": "Edge & Networking",
-        "tier": "big_tech",
-        "ats": "greenhouse",
-        "board": "cloudflare",
-        "eor_supported": True,
-        "notes": "Linux network stack, eBPF/XDP, kernel tuning, Go/Rust.",
-    },
-    {
-        "id": "elastic",
-        "name": "Elastic",
-        "category": "Search & Observability",
-        "tier": "enterprise_infra",
-        "ats": "greenhouse",
-        "board": "elastic",
-        "eor_supported": True,
-        "notes": "Distributed by design.",
-    },
-    {
-        "id": "gitlab",
-        "name": "GitLab",
-        "category": "DevOps & Cloud",
-        "tier": "enterprise_infra",
-        "ats": "greenhouse",
-        "board": "gitlab",
-        "eor_supported": True,
-        "notes": "All-remote company. EOR-based hiring across EMEA.",
-    },
-    {
-        "id": "docker",
-        "name": "Docker",
-        "category": "Containers & Runtime",
-        "tier": "enterprise_infra",
-        "ats": "greenhouse",
-        "board": "docker",
-        "eor_supported": True,
-        "notes": "Docker Desktop, Linux containers, buildx.",
-    },
-    {
-        "id": "siderolabs",
-        "name": "Sidero Labs",
-        "category": "Immutable OS & Kubernetes",
-        "tier": "scaleup",
-        "ats": "sidero",
-        "board": "siderolabs",
-        "eor_supported": True,
-        "notes": "Creators of Talos Linux. 100% Go & Linux kernel immutable platform.",
-    },
-    {
-        "id": "proxmox",
-        "name": "Proxmox Server Solutions",
-        "category": "Virtualization & Storage",
-        "tier": "scaleup",
-        "ats": "proxmox",
-        "board": "proxmox",
-        "eor_supported": False,
-        "notes": "Proxmox VE, Debian, Linux kernel, QEMU/KVM, ZFS.",
-    },
-    {
-        "id": "ciq",
-        "name": "CIQ (Ctrl IQ)",
-        "category": "Enterprise Linux & HPC",
-        "tier": "enterprise_infra",
-        "ats": "greenhouse",
-        "board": "ciq",
-        "eor_supported": True,
-        "notes": "Rocky Linux commercial sponsor. Linux kernel live patching. 100% remote.",
-    },
-    {
-        "id": "tigera",
-        "name": "Tigera",
-        "category": "eBPF Networking & Security",
-        "tier": "enterprise_infra",
-        "ats": "greenhouse",
-        "board": "tigera",
-        "eor_supported": True,
-        "notes": "Project Calico creators. eBPF dataplane, Linux networking, CNI. Remote in Europe via EOR.",
-    },
-    {
-        "id": "goteleport",
-        "name": "Teleport",
-        "category": "Infrastructure Access & Security",
-        "tier": "scaleup",
-        "ats": "ashby",
-        "board": "goteleport",
-        "eor_supported": True,
-        "notes": "Zero-trust infrastructure access. Linux PAM, eBPF audit logging, Go. Remote in Europe via EOR.",
-    },
-    {
-        "id": "cribl",
-        "name": "Cribl",
-        "category": "Observability & Telemetry Pipelines",
-        "tier": "enterprise_infra",
-        "ats": "greenhouse",
-        "board": "cribl",
-        "eor_supported": True,
-        "notes": "Cribl Stream, telemetry pipelines, distributed data processing. Remote-first in Europe via EOR.",
-    },
-    {
-        "id": "kong",
-        "name": "Kong",
-        "category": "Cloud Connectivity & API Gateway",
-        "tier": "enterprise_infra",
-        "ats": "ashby",
-        "board": "kong",
-        "eor_supported": True,
-        "notes": "Cloud API gateway, Envoy/NGINX data plane, Lua/Go/Rust. Remote across Europe.",
-    },
-    {
-        "id": "honeycomb",
-        "name": "Honeycomb",
-        "category": "Observability & Distributed Tracing",
-        "tier": "enterprise_infra",
-        "ats": "greenhouse",
-        "board": "honeycomb",
-        "eor_supported": True,
-        "notes": "High-cardinality observability & distributed tracing pioneers. Remote in Europe via EOR.",
-    },
-    {
-        "id": "upbound",
-        "name": "Upbound",
-        "category": "Control Planes & Cloud Native Infra",
-        "tier": "scaleup",
-        "ats": "greenhouse",
-        "board": "upbound",
-        "eor_supported": True,
-        "notes": "Crossplane creators, cloud-native control planes, Kubernetes, Go. 100% remote via EOR.",
-    },
-    {
-        "id": "vultr",
-        "name": "Vultr",
-        "category": "Cloud Infrastructure & Bare Metal",
-        "tier": "enterprise_infra",
-        "ats": "ashby",
-        "board": "vultr",
-        "eor_supported": True,
-        "notes": "Global cloud platform, bare-metal orchestration, Linux virtualization, QEMU/KVM. Remote.",
-    },
-    {
-        "id": "motherduck",
-        "name": "MotherDuck",
-        "category": "Serverless Analytics & Data Systems",
-        "tier": "scaleup",
-        "ats": "ashby",
-        "board": "motherduck",
-        "eor_supported": True,
-        "notes": "Serverless DuckDB cloud analytics, C++/Rust/Go, data engines. Remote in Europe/US via EOR.",
-    },
-    {
-        "id": "scaleway",
-        "name": "Scaleway",
-        "category": "European Cloud Infrastructure",
-        "tier": "enterprise_infra",
-        "ats": "lever",
-        "board": "scaleway",
-        "eor_supported": True,
-        "notes": "European cloud provider (Iliad group). Bare metal, virtualization, Linux kernel. Remote in Europe.",
-    },
-    {
-        "id": "starburst",
-        "name": "Starburst",
-        "category": "Distributed SQL & Big Data",
-        "tier": "enterprise_infra",
-        "ats": "greenhouse",
-        "board": "starburst",
-        "eor_supported": True,
-        "notes": "Enterprise Trino distributed query engine, high-performance data systems. Remote in Europe.",
-    },
-    {
-        "id": "yugabyte",
-        "name": "Yugabyte",
-        "category": "Distributed SQL & Database Systems",
-        "tier": "scaleup",
-        "ats": "greenhouse",
-        "board": "yugabyte",
-        "eor_supported": True,
-        "notes": "Distributed PostgreSQL, C++, Raft consensus, storage engines. Remote in Europe via EOR.",
-    },
-    {
-        "id": "influxdata",
-        "name": "InfluxData",
-        "category": "Time Series DB & Data Systems",
-        "tier": "scaleup",
-        "ats": "ashby",
-        "board": "influxdata",
-        "eor_supported": True,
-        "notes": "InfluxDB 3.0, Apache Arrow DataFusion, Rust/Go, time-series storage. Remote-first via EOR.",
-    },
-    {
-        "id": "mattermost",
-        "name": "Mattermost",
-        "category": "Open Source Platform & Collaboration",
-        "tier": "scaleup",
-        "ats": "greenhouse",
-        "board": "mattermost",
-        "eor_supported": True,
-        "notes": "Open-source developer platform, Go backend, high concurrency. 100% remote in Europe via EOR.",
-    },
-]
+PEER_CATALOG_FILE = os.path.join(DATA_DIR, "peer_catalog.yaml")
+
+
+@functools.lru_cache(maxsize=1)
+def load_peer_catalog() -> list:
+    """Curated peer companies from data/peer_catalog.yaml."""
+    with open(PEER_CATALOG_FILE, "r", encoding="utf-8") as f:
+        return (yaml.safe_load(f) or {}).get("peers", [])
 
 
 def load_tracked_ids():
@@ -298,7 +31,7 @@ def list_peers(category=None, tier=None, home_only=False):
     tracked = load_tracked_ids()
     print(f"\n{'ID':<15} | {'NAME':<20} | {'TIER':<16} | {'EOR':<5} | {'STATUS'}")
     print("-" * 80)
-    for p in PEER_CATALOG:
+    for p in load_peer_catalog():
         if category and category.lower() not in p["category"].lower():
             continue
         if tier and tier.lower() != p["tier"].lower():
@@ -313,7 +46,7 @@ def list_peers(category=None, tier=None, home_only=False):
 
 def add_peer(company_id: str):
     target_id = company_id.lower()
-    match = next((p for p in PEER_CATALOG if p["id"].lower() == target_id), None)
+    match = next((p for p in load_peer_catalog() if p["id"].lower() == target_id), None)
     if not match:
         sys.exit(f"Company ID '{target_id}' not found in discovery catalog.")
 

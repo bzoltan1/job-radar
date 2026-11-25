@@ -1,0 +1,224 @@
+# Curated peer companies for `radar.py discover list|add`. `add` copies an entry into your targets file.
+# Fields match targets.example.yaml (id, name, category, tier, ats, board, eor_supported, notes, ...).
+
+peers:
+- id: canonical
+  name: Canonical
+  category: Linux & OS
+  tier: enterprise_infra
+  ats: greenhouse
+  board: canonical
+  eor_supported: true
+  notes: Ubuntu creators. Home based EMEA/Worldwide.
+- id: redhat
+  name: Red Hat
+  category: Linux & OS
+  tier: big_tech
+  ats: workday
+  board: redhat
+  site: jobs
+  sub_domain: wd5
+  eor_supported: true
+  notes: Enterprise Linux, OpenShift, Kernel & Systems.
+- id: intel
+  name: Intel
+  category: Silicon & Systems
+  tier: big_tech
+  ats: workday
+  board: intel
+  site: External
+  sub_domain: wd1
+  eor_supported: true
+  notes: Linux kernel, toolchains, low-level systems.
+- id: arm
+  name: Arm
+  category: Silicon & Systems
+  tier: big_tech
+  ats: smartrecruiters
+  board: Arm
+  eor_supported: true
+  notes: Arm architecture, Linux kernel enablement, toolchain, firmware.
+- id: datadog
+  name: Datadog
+  category: Observability
+  tier: enterprise_infra
+  ats: greenhouse
+  board: datadog
+  eor_supported: true
+  notes: Major eBPF, Go, C, Linux kernel observability stack.
+- id: grafanalabs
+  name: Grafana Labs
+  category: Observability
+  tier: enterprise_infra
+  ats: greenhouse
+  board: grafanalabs
+  eor_supported: true
+  notes: Fully distributed. Go, eBPF, Prometheus.
+- id: sysdig
+  name: Sysdig
+  category: Container & eBPF Security
+  tier: enterprise_infra
+  ats: greenhouse
+  board: sysdig
+  eor_supported: true
+  notes: eBPF, Falco creators, runtime security agent.
+- id: cloudflare
+  name: Cloudflare
+  category: Edge & Networking
+  tier: big_tech
+  ats: greenhouse
+  board: cloudflare
+  eor_supported: true
+  notes: Linux network stack, eBPF/XDP, kernel tuning, Go/Rust.
+- id: elastic
+  name: Elastic
+  category: Search & Observability
+  tier: enterprise_infra
+  ats: greenhouse
+  board: elastic
+  eor_supported: true
+  notes: Distributed by design.
+- id: gitlab
+  name: GitLab
+  category: DevOps & Cloud
+  tier: enterprise_infra
+  ats: greenhouse
+  board: gitlab
+  eor_supported: true
+  notes: All-remote company. EOR-based hiring across EMEA.
+- id: docker
+  name: Docker
+  category: Containers & Runtime
+  tier: enterprise_infra
+  ats: greenhouse
+  board: docker
+  eor_supported: true
+  notes: Docker Desktop, Linux containers, buildx.
+- id: siderolabs
+  name: Sidero Labs
+  category: Immutable OS & Kubernetes
+  tier: scaleup
+  ats: sidero
+  board: siderolabs
+  eor_supported: true
+  notes: Creators of Talos Linux. 100% Go & Linux kernel immutable platform.
+- id: proxmox
+  name: Proxmox Server Solutions
+  category: Virtualization & Storage
+  tier: scaleup
+  ats: proxmox
+  board: proxmox
+  eor_supported: false
+  notes: Proxmox VE, Debian, Linux kernel, QEMU/KVM, ZFS.
+- id: ciq
+  name: CIQ (Ctrl IQ)
+  category: Enterprise Linux & HPC
+  tier: enterprise_infra
+  ats: greenhouse
+  board: ciq
+  eor_supported: true
+  notes: Rocky Linux commercial sponsor. Linux kernel live patching. 100% remote.
+- id: tigera
+  name: Tigera
+  category: eBPF Networking & Security
+  tier: enterprise_infra
+  ats: greenhouse
+  board: tigera
+  eor_supported: true
+  notes: Project Calico creators. eBPF dataplane, Linux networking, CNI. Remote in Europe via EOR.
+- id: goteleport
+  name: Teleport
+  category: Infrastructure Access & Security
+  tier: scaleup
+  ats: ashby
+  board: goteleport
+  eor_supported: true
+  notes: Zero-trust infrastructure access. Linux PAM, eBPF audit logging, Go. Remote in Europe via EOR.
+- id: cribl
+  name: Cribl
+  category: Observability & Telemetry Pipelines
+  tier: enterprise_infra
+  ats: greenhouse
+  board: cribl
+  eor_supported: true
+  notes: Cribl Stream, telemetry pipelines, distributed data processing. Remote-first in Europe via EOR.
+- id: kong
+  name: Kong
+  category: Cloud Connectivity & API Gateway
+  tier: enterprise_infra
+  ats: ashby
+  board: kong
+  eor_supported: true
+  notes: Cloud API gateway, Envoy/NGINX data plane, Lua/Go/Rust. Remote across Europe.
+- id: honeycomb
+  name: Honeycomb
+  category: Observability & Distributed Tracing
+  tier: enterprise_infra
+  ats: greenhouse
+  board: honeycomb
+  eor_supported: true
+  notes: High-cardinality observability & distributed tracing pioneers. Remote in Europe via EOR.
+- id: upbound
+  name: Upbound
+  category: Control Planes & Cloud Native Infra
+  tier: scaleup
+  ats: greenhouse
+  board: upbound
+  eor_supported: true
+  notes: Crossplane creators, cloud-native control planes, Kubernetes, Go. 100% remote via EOR.
+- id: vultr
+  name: Vultr
+  category: Cloud Infrastructure & Bare Metal
+  tier: enterprise_infra
+  ats: ashby
+  board: vultr
+  eor_supported: true
+  notes: Global cloud platform, bare-metal orchestration, Linux virtualization, QEMU/KVM. Remote.
+- id: motherduck
+  name: MotherDuck
+  category: Serverless Analytics & Data Systems
+  tier: scaleup
+  ats: ashby
+  board: motherduck
+  eor_supported: true
+  notes: Serverless DuckDB cloud analytics, C++/Rust/Go, data engines. Remote in Europe/US via EOR.
+- id: scaleway
+  name: Scaleway
+  category: European Cloud Infrastructure
+  tier: enterprise_infra
+  ats: lever
+  board: scaleway
+  eor_supported: true
+  notes: European cloud provider (Iliad group). Bare metal, virtualization, Linux kernel. Remote in Europe.
+- id: starburst
+  name: Starburst
+  category: Distributed SQL & Big Data
+  tier: enterprise_infra
+  ats: greenhouse
+  board: starburst
+  eor_supported: true
+  notes: Enterprise Trino distributed query engine, high-performance data systems. Remote in Europe.
+- id: yugabyte
+  name: Yugabyte
+  category: Distributed SQL & Database Systems
+  tier: scaleup
+  ats: greenhouse
+  board: yugabyte
+  eor_supported: true
+  notes: Distributed PostgreSQL, C++, Raft consensus, storage engines. Remote in Europe via EOR.
+- id: influxdata
+  name: InfluxData
+  category: Time Series DB & Data Systems
+  tier: scaleup
+  ats: ashby
+  board: influxdata
+  eor_supported: true
+  notes: InfluxDB 3.0, Apache Arrow DataFusion, Rust/Go, time-series storage. Remote-first via EOR.
+- id: mattermost
+  name: Mattermost
+  category: Open Source Platform & Collaboration
+  tier: scaleup
+  ats: greenhouse
+  board: mattermost
+  eor_supported: true
+  notes: Open-source developer platform, Go backend, high concurrency. 100% remote in Europe via EOR.
