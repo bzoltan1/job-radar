@@ -16,7 +16,7 @@ Source: /code-review high. Items 1-11 verified by reading; 1, 4, 5, 8 reproduced
 - [x] 11. Accept-Language neutral; Amazon search terms from target `queries`/`country_queries` (your targets.local.yaml updated to keep current behaviour); personal systemd unit untracked + gitignored (example path generic). Decided NOT to externalise title/role persona regexes (systems/SRE defaults are generic role vocabulary, not personal data; needs a design call if you want per-profile role patterns). Project UA URL kept (public repo URL).
 
 ## Refactors
-- [ ] db.py: merge two `upsert_job` statements (`COALESCE(?, CURRENT_TIMESTAMP)`); deterministic `update_job_status`; hoist `struct` import.
+- [x] db.py: single `upsert_job` statement; `update_job_status` = exact id first, then active+best-score title match, `%`/`_` escaped; `struct` import hoisted.
 - [ ] cli.py: `set_defaults(func=...)` dispatch; merge `cmd_apply` into `cmd_status`; hoist `get_db` import in `cmd_embed`.
 - [ ] Salary extraction: module-level regexes, one currency helper, fix lowercase `eur`/unknown-currency fallback.
 - [ ] `LocationStage.process`: split classifier / scorer.

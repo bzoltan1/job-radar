@@ -1,6 +1,7 @@
 """SQLite Database interface and storage operations for Job Radar."""
 
 import sqlite3
+import struct
 from typing import Any, Dict, List, Optional
 
 from radar.config import DB_PATH
@@ -109,106 +110,57 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
     content_str = (job.content or "")[:4000]
 
     with conn:
-        if job.first_seen:
-            conn.execute(
-                """
-                INSERT INTO jobs (
-                    id, company_id, title, location, is_home_direct, is_emea_remote,
-                    score, url, tags, salary_min, salary_max, salary_currency,
-                    salary_display, salary_norm_max, profile_match_pct, matched_skills,
-                    pitch_bullets, content, first_seen, last_seen, active
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1)
-                ON CONFLICT(id) DO UPDATE SET
-                    title=excluded.title,
-                    location=excluded.location,
-                    is_home_direct=excluded.is_home_direct,
-                    is_emea_remote=excluded.is_emea_remote,
-                    score=excluded.score,
-                    tags=excluded.tags,
-                    salary_min=excluded.salary_min,
-                    salary_max=excluded.salary_max,
-                    salary_currency=excluded.salary_currency,
-                    salary_display=excluded.salary_display,
-                    salary_norm_max=excluded.salary_norm_max,
-                    profile_match_pct=excluded.profile_match_pct,
-                    matched_skills=excluded.matched_skills,
-                    pitch_bullets=excluded.pitch_bullets,
-                    content=excluded.content,
-                    first_seen=MIN(jobs.first_seen, excluded.first_seen),
-                    last_seen=CURRENT_TIMESTAMP,
-                    active=1
-                """,
-                (
-                    job.id,
-                    job.company_id,
-                    job.title,
-                    job.location,
-                    int(job.is_home_direct),
-                    int(job.is_emea_remote),
-                    score,
-                    job.url,
-                    tags_str,
-                    job.salary.min_val,
-                    job.salary.max_val,
-                    job.salary.currency,
-                    job.salary.display,
-                    job.salary.norm_max_eur,
-                    job.profile.match_pct,
-                    matched_skills_str,
-                    pitch_str,
-                    content_str,
-                    job.first_seen,
-                ),
-            )
-        else:
-            conn.execute(
-                """
-                INSERT INTO jobs (
-                    id, company_id, title, location, is_home_direct, is_emea_remote,
-                    score, url, tags, salary_min, salary_max, salary_currency,
-                    salary_display, salary_norm_max, profile_match_pct, matched_skills,
-                    pitch_bullets, content, last_seen, active
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1)
-                ON CONFLICT(id) DO UPDATE SET
-                    title=excluded.title,
-                    location=excluded.location,
-                    is_home_direct=excluded.is_home_direct,
-                    is_emea_remote=excluded.is_emea_remote,
-                    score=excluded.score,
-                    tags=excluded.tags,
-                    salary_min=excluded.salary_min,
-                    salary_max=excluded.salary_max,
-                    salary_currency=excluded.salary_currency,
-                    salary_display=excluded.salary_display,
-                    salary_norm_max=excluded.salary_norm_max,
-                    profile_match_pct=excluded.profile_match_pct,
-                    matched_skills=excluded.matched_skills,
-                    pitch_bullets=excluded.pitch_bullets,
-                    content=excluded.content,
-                    last_seen=CURRENT_TIMESTAMP,
-                    active=1
-                """,
-                (
-                    job.id,
-                    job.company_id,
-                    job.title,
-                    job.location,
-                    int(job.is_home_direct),
-                    int(job.is_emea_remote),
-                    score,
-                    job.url,
-                    tags_str,
-                    job.salary.min_val,
-                    job.salary.max_val,
-                    job.salary.currency,
-                    job.salary.display,
-                    job.salary.norm_max_eur,
-                    job.profile.match_pct,
-                    matched_skills_str,
-                    pitch_str,
-                    content_str,
-                ),
-            )
+        conn.execute(
+            """
+            INSERT INTO jobs (
+                id, company_id, title, location, is_home_direct, is_emea_remote,
+                score, url, tags, salary_min, salary_max, salary_currency,
+                salary_display, salary_norm_max, profile_match_pct, matched_skills,
+                pitch_bullets, content, first_seen, last_seen, active
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                      COALESCE(?, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP, 1)
+            ON CONFLICT(id) DO UPDATE SET
+                title=excluded.title,
+                location=excluded.location,
+                is_home_direct=excluded.is_home_direct,
+                is_emea_remote=excluded.is_emea_remote,
+                score=excluded.score,
+                tags=excluded.tags,
+                salary_min=excluded.salary_min,
+                salary_max=excluded.salary_max,
+                salary_currency=excluded.salary_currency,
+                salary_display=excluded.salary_display,
+                salary_norm_max=excluded.salary_norm_max,
+                profile_match_pct=excluded.profile_match_pct,
+                matched_skills=excluded.matched_skills,
+                pitch_bullets=excluded.pitch_bullets,
+                content=excluded.content,
+                first_seen=MIN(jobs.first_seen, excluded.first_seen),
+                last_seen=CURRENT_TIMESTAMP,
+                active=1
+            """,
+            (
+                job.id,
+                job.company_id,
+                job.title,
+                job.location,
+                int(job.is_home_direct),
+                int(job.is_emea_remote),
+                score,
+                job.url,
+                tags_str,
+                job.salary.min_val,
+                job.salary.max_val,
+                job.salary.currency,
+                job.salary.display,
+                job.salary.norm_max_eur,
+                job.profile.match_pct,
+                matched_skills_str,
+                pitch_str,
+                content_str,
+                job.first_seen,  # None -> now; an existing row keeps its earlier first_seen
+            ),
+        )
 
 
 def apply_stored_scores(conn: sqlite3.Connection, jobs: List[Job]):
@@ -307,10 +259,16 @@ def get_active_jobs(
 
 
 def update_job_status(conn: sqlite3.Connection, job_id_query: str, new_status: str) -> Optional[str]:
-    """Find a job by ID or title substring and update status."""
+    """Find a job by exact ID, else by title substring (best-scoring active job first), and update status."""
+    like = "%" + job_id_query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
     row = conn.execute(
-        "SELECT id, title, company_id, status FROM jobs WHERE id = ? OR title LIKE ? LIMIT 1",
-        (job_id_query, f"%{job_id_query}%"),
+        """
+        SELECT id, title, company_id, status FROM jobs
+        WHERE id = ? OR title LIKE ? ESCAPE '\\'
+        ORDER BY (id = ?) DESC, active DESC, score DESC
+        LIMIT 1
+        """,
+        (job_id_query, like, job_id_query),
     ).fetchone()
 
     if not row:
@@ -333,13 +291,11 @@ def mark_notified(conn: sqlite3.Connection, job_ids: List[str]):
 
 def serialize_vector(vec: List[float]) -> bytes:
     """Pack float array into binary float32 buffer."""
-    import struct
     return struct.pack(f"{len(vec)}f", *vec)
 
 
 def deserialize_vector(data: bytes) -> List[float]:
     """Unpack binary float32 buffer into float list."""
-    import struct
     count = len(data) // 4
     return list(struct.unpack(f"{count}f", data))
 

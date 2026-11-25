@@ -191,3 +191,44 @@ class TestProfilePillarSync(unittest.TestCase):
         save_job_embedding(self.conn, "j", self.provider.model_name, [0.1], 10, "semantic:x")
         ensure_profile_embeddings(self.conn, profile, self.provider)
         self.assertEqual(self.status(), "done")  # not re-embedded every run
+
+
+class TestUpsertAndStatus(unittest.TestCase):
+    def setUp(self):
+        self.conn = get_db(":memory:")
+
+    def job(self, jid, title, score=50, first_seen=None, active=True):
+        j = Job(id=jid, company_id="acme", title=title, location="L", url="u", score=score, first_seen=first_seen)
+        upsert_job(self.conn, j)
+        if not active:
+            self.conn.execute("UPDATE jobs SET active=0 WHERE id=?", (jid,))
+        return j
+
+    def test_first_seen_is_kept_and_only_moves_earlier(self):
+        self.job("a", "T", first_seen="2024-01-01 00:00:00")
+        self.job("a", "T")  # no date: keep stored
+        self.job("a", "T", first_seen="2024-06-01 00:00:00")  # later: keep stored
+        fs = lambda: self.conn.execute("SELECT first_seen FROM jobs WHERE id='a'").fetchone()[0]
+        self.assertEqual(fs(), "2024-01-01 00:00:00")
+        self.job("a", "T", first_seen="2023-05-05 00:00:00")  # earlier posting date wins
+        self.assertEqual(fs(), "2023-05-05 00:00:00")
+
+    def test_new_job_without_date_gets_now(self):
+        self.job("b", "T")
+        self.assertIsNotNone(self.conn.execute("SELECT first_seen FROM jobs WHERE id='b'").fetchone()[0])
+
+    def test_status_prefers_exact_id_then_active_best_score_and_escapes_wildcards(self):
+        from radar.db import update_job_status
+
+        self.job("low", "Senior SRE", score=10)
+        self.job("high", "Senior SRE II", score=90)
+        self.job("dead", "Senior SRE III", score=99, active=False)
+        self.job("pct", "100% Remote")
+        self.job("other", "Platform")
+        update_job_status(self.conn, "SRE", "applied")
+        st = lambda i: self.conn.execute("SELECT status FROM jobs WHERE id=?", (i,)).fetchone()[0]
+        self.assertEqual((st("high"), st("low"), st("dead")), ("applied", "new", "new"))
+        update_job_status(self.conn, "low", "rejected")  # exact id beats title matches
+        self.assertEqual(st("low"), "rejected")
+        update_job_status(self.conn, "%", "offer")  # literal %, not a wildcard
+        self.assertEqual((st("pct"), st("other")), ("offer", "new"))
