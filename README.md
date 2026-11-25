@@ -57,7 +57,7 @@ If your country isn't in `data/countries.yaml`, add it there (aliases + cities).
 
 ### Generate your company list and skill matrix from your CV with an LLM
 
-Feed your CV (plus links to your blog or projects if you like) to an LLM with this prompt, then review the output by hand. LLMs invent ATS board ids, so check every company with `python3 radar.py sync --company <id> --sinks db`: `Found: 0` usually means a wrong `ats`/`board`.
+Feed your CV (plus links to your blog or projects if you like) to an LLM with this prompt, then review the output by hand. LLMs invent ATS board ids, so check every company with `python3 radar.py sync --company <id> --sinks db`: a wrong `ats`/`board` shows up as `fetch failed: ... HTTP 404` (or `Found: 0`).
 
 ```text
 You are helping me configure Job Radar, a job-board scraper. Attached is my CV.

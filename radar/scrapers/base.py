@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 import html
 import re
 from typing import Dict, List, Optional
-import urllib.request
 
+from radar.http import http_get_text
 from radar.models import CompanyTarget, RawJob
 
 
@@ -26,13 +26,8 @@ class BaseHtmlScraper(ABC):
         headers: Optional[Dict[str, str]] = None,
         timeout: int = 20,
     ) -> str:
-        """Fetch raw HTML string from target URL."""
-        req_headers = {**self.default_headers, **(headers or {})}
-        req = urllib.request.Request(url, headers=req_headers)
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            raw_bytes = resp.read()
-            charset = resp.headers.get_content_charset() or "utf-8"
-            return raw_bytes.decode(charset, errors="replace")
+        """Fetch raw HTML from the target URL; raises FetchError on failure."""
+        return http_get_text(url, headers={**self.default_headers, **(headers or {})}, timeout=timeout)
 
     @staticmethod
     def clean_text(html_text: str) -> str:

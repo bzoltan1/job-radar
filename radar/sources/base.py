@@ -29,5 +29,10 @@ class BaseSource(ABC):
 
     @abstractmethod
     def fetch(self, target: CompanyTarget) -> List[RawJob]:
-        """Fetch all raw job postings for a target company."""
+        """Fetch all raw job postings for a target company.
+
+        Return [] only when the company really has no openings. Raise radar.http.FetchError on any
+        failure (network, HTTP error, unparsable or suspiciously empty page): sync then keeps the
+        company's stored jobs active instead of deactivating them.
+        """
         pass

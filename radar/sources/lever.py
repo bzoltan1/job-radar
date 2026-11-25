@@ -1,11 +1,8 @@
 """Lever ATS source plugin."""
 
-import json
-import sys
-import urllib.error
-import urllib.request
 from typing import List
 
+from radar.http import FetchError, http_get_json
 from radar.models import CompanyTarget, RawJob
 from radar.sources.base import BaseSource, parse_job_date
 
@@ -19,25 +16,16 @@ class LeverSource(BaseSource):
         if target.site == "eu" or target.sub_domain == "eu":
             hosts = ["api.eu.lever.co", "api.lever.co"]
 
-        data = None
+        # A board lives on one region only: 404 means "try the other host".
         for host in hosts:
-            url = f"https://{host}/v0/postings/{board_id}?mode=json"
-            req = urllib.request.Request(url, headers={"User-Agent": "JobRadar/2.0"})
             try:
-                with urllib.request.urlopen(req, timeout=20) as resp:
-                    data = json.loads(resp.read().decode("utf-8"))
-                    break
-            except urllib.error.HTTPError as e:
-                if e.code == 404:
-                    continue
-                print(f"[-] Error fetching Lever ({board_id}) on {host}: {e}", file=sys.stderr)
+                data = http_get_json(f"https://{host}/v0/postings/{board_id}?mode=json")
                 break
-            except Exception as e:
-                print(f"[-] Error fetching Lever ({board_id}) on {host}: {e}", file=sys.stderr)
-                break
-
-        if not data:
-            return []
+            except FetchError as e:
+                if e.status != 404:
+                    raise
+        else:
+            raise FetchError(f"Lever board '{board_id}' not found on {' or '.join(hosts)}", status=404)
 
         jobs = []
         for item in data:

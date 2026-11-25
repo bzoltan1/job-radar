@@ -24,6 +24,7 @@ from radar.db import (
     save_job_embedding,
     update_job_status,
 )
+from radar.http import FetchError
 from radar.discovery import add_peer, list_peers, query_cncf
 from radar.models import PipelineContext
 from radar.pipeline.engine import PipelineEngine
@@ -50,6 +51,7 @@ def cmd_sync(args):
     total_scanned = 0
     all_processed_jobs = []
     new_job_ids = set()
+    failed_targets = []
 
     print(f"[*] Syncing {len(targets)} target companies...")
     for target in targets:
@@ -58,16 +60,15 @@ def cmd_sync(args):
             print(f"[-] Unknown ATS '{target.ats}' for {target.name}. Skipping.", file=sys.stderr)
             continue
 
-        raw_jobs = source.fetch(target)
+        try:
+            raw_jobs = source.fetch(target)
+        except Exception as e:  # FetchError, or a parser bug: either way keep this company's stored jobs
+            kind = "fetch failed" if isinstance(e, FetchError) else f"{type(e).__name__}"
+            print(f"  ! {target.name:<24} | {kind}: {e} | keeping stored jobs", file=sys.stderr)
+            failed_targets.append(target.name)
+            continue
         total_scanned += len(raw_jobs)
         existing_first_seen = get_existing_first_seen(conn, target.id)
-        # shortcut: sources swallow fetch errors and return [], so an empty result keeps the
-        # company's jobs active instead of wiping them; a company that really drops to zero
-        # openings keeps stale rows until sources report failures explicitly.
-        if not raw_jobs:
-            if existing_first_seen:
-                print(f"  ! {target.name:<24} | Found: 0 | keeping {len(existing_first_seen)} stored jobs (fetch may have failed)")
-            continue
         deactivate_company_jobs(conn, target.id)
 
         target_matched = 0
@@ -116,6 +117,8 @@ def cmd_sync(args):
             snapshot_jobs = [job_from_row(r) for r in get_active_jobs(conn, min_score=args.min_score)]
 
     print(f"\n[+] Sync complete. Total scanned: {total_scanned}, Matched: {len(all_processed_jobs)}")
+    if failed_targets:
+        print(f"[-] {len(failed_targets)} target(s) failed and kept their stored jobs: {', '.join(failed_targets)}", file=sys.stderr)
 
 
 def cmd_top(args):

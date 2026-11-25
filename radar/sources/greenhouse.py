@@ -1,10 +1,8 @@
 """Greenhouse ATS source plugin."""
 
-import json
-import sys
-import urllib.request
 from typing import List
 
+from radar.http import http_get_json
 from radar.models import CompanyTarget, RawJob
 from radar.sources.base import BaseSource, parse_job_date
 
@@ -39,27 +37,17 @@ class GreenhouseSource(BaseSource):
 
     def fetch(self, target: CompanyTarget) -> List[RawJob]:
         board_id = target.board or target.id
-        url = f"https://boards-api.greenhouse.io/v1/boards/{board_id}/jobs?content=true"
-        req = urllib.request.Request(url, headers={"User-Agent": "JobRadar/2.0"})
-        try:
-            with urllib.request.urlopen(req, timeout=20) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                jobs = []
-                for item in data.get("jobs", []):
-                    loc = build_greenhouse_location(item)
-                    jobs.append(
-                        RawJob(
-                            id=f"gh_{board_id}_{item['id']}",
-                            company_id=target.id,
-                            title=item.get("title", ""),
-                            location=loc,
-                            url=item.get("absolute_url", ""),
-                            content=item.get("content", ""),
-                            posted_date=parse_job_date(item.get("first_published") or item.get("updated_at")),
-                            metadata={"raw": item.get("metadata", [])},
-                        )
-                    )
-                return jobs
-        except Exception as e:
-            print(f"[-] Error fetching Greenhouse ({board_id}): {e}", file=sys.stderr)
-            return []
+        data = http_get_json(f"https://boards-api.greenhouse.io/v1/boards/{board_id}/jobs?content=true")
+        return [
+            RawJob(
+                id=f"gh_{board_id}_{item['id']}",
+                company_id=target.id,
+                title=item.get("title", ""),
+                location=build_greenhouse_location(item),
+                url=item.get("absolute_url", ""),
+                content=item.get("content", ""),
+                posted_date=parse_job_date(item.get("first_published") or item.get("updated_at")),
+                metadata={"raw": item.get("metadata", [])},
+            )
+            for item in data.get("jobs", [])
+        ]

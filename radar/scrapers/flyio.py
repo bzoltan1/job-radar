@@ -2,9 +2,9 @@
 
 import html
 import re
-import sys
 from typing import List
 
+from radar.http import FetchError
 from radar.models import CompanyTarget, RawJob
 from radar.scrapers.base import BaseHtmlScraper
 
@@ -20,11 +20,7 @@ class FlyIOScraper(BaseHtmlScraper):
         url = target.extra.get("url") or self.default_url
         jobs: List[RawJob] = []
 
-        try:
-            html_content = self.fetch_html(url)
-        except Exception as e:
-            print(f"[-] Error fetching Fly.io careers page ({url}): {e}", file=sys.stderr)
-            return jobs
+        html_content = self.fetch_html(url)
 
         articles = re.findall(r"<article[^>]*>(.*?)</article>", html_content, re.DOTALL)
         for a in articles:
@@ -68,8 +64,8 @@ class FlyIOScraper(BaseHtmlScraper):
                 if main_section:
                     cleaned_body = self.clean_text(main_section)
                     content = f"{title}\nLocation: {location}\n\n{cleaned_body[:4000]}"
-            except Exception:
-                pass
+            except FetchError:
+                pass  # subpage text is best-effort
 
             jobs.append(
                 RawJob(

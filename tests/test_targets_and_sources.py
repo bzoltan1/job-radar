@@ -67,11 +67,12 @@ class TestAmazonQueries(unittest.TestCase):
 
         urls = []
 
-        def fake_urlopen(req, timeout=0):
-            urls.append(req.full_url)
-            raise OSError("offline")
+        def fake_get_json(url, **kwargs):
+            urls.append(url)
+            return {"jobs": []}
 
-        with patch.dict(os.environ, {"CANDIDATE_COUNTRY": "Italy"}), patch("urllib.request.urlopen", fake_urlopen):
+        with patch.dict(os.environ, {"CANDIDATE_COUNTRY": "Italy"}), \
+             patch("radar.sources.custom.http_get_json", fake_get_json):
             AmazonSource().fetch(CompanyTarget(id="aws", name="AWS", extra=extra))
         return urls
 

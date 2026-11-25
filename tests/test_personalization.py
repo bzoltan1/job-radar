@@ -40,20 +40,34 @@ class TestNoBuiltinDefaults(unittest.TestCase):
 
 
 class TestSyncEmptyFetch(unittest.TestCase):
-    def test_empty_fetch_keeps_stored_jobs_active(self):
+    def sync_with(self, source):
         from radar import cli
 
         conn = get_db(":memory:")
         upsert_job(conn, Job(id="j1", company_id="acme", title="SRE", location="Remote", url="u", score=90))
-        source = MagicMock()
-        source.fetch.return_value = []
         args = argparse.Namespace(company=None, min_score=0, sinks="", notify=False, force_notify=False)
         with patch.object(cli, "get_db", return_value=conn), \
              patch.object(cli, "load_targets", return_value=[CompanyTarget(id="acme", name="Acme")]), \
              patch.object(cli, "get_source", return_value=source):
             cli.cmd_sync(args)
-        self.assertEqual(conn.execute("SELECT active FROM jobs WHERE id='j1'").fetchone()[0], 1)
+        return conn.execute("SELECT active FROM jobs WHERE id='j1'").fetchone()[0]
 
+    def test_failed_fetch_keeps_stored_jobs_active(self):
+        from radar.http import FetchError
+
+        source = MagicMock()
+        source.fetch.side_effect = FetchError("boom")
+        self.assertEqual(self.sync_with(source), 1)
+
+    def test_unexpected_source_error_keeps_stored_jobs_active(self):
+        source = MagicMock()
+        source.fetch.side_effect = KeyError("id")
+        self.assertEqual(self.sync_with(source), 1)
+
+    def test_genuinely_empty_board_deactivates_stored_jobs(self):
+        source = MagicMock()
+        source.fetch.return_value = []
+        self.assertEqual(self.sync_with(source), 0)
 
     def test_sinks_without_db_still_store_jobs_before_other_sinks(self):
         from radar import cli

@@ -1,13 +1,9 @@
 """Workday ATS source plugin."""
 
-import json
 import ssl
-import sys
-import time
-import urllib.error
-import urllib.request
 from typing import List
 
+from radar.http import http_get_json
 from radar.models import CompanyTarget, RawJob
 from radar.sources.base import BaseSource
 
@@ -24,7 +20,6 @@ class WorkdaySource(BaseSource):
 
         url = f"https://{tenant}.{sub_domain}.{base_host}/wday/cxs/{tenant}/{site}/jobs"
         headers = {
-            "Content-Type": "application/json",
             "Accept": "application/json",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         }
@@ -35,37 +30,20 @@ class WorkdaySource(BaseSource):
             pass
 
         jobs = []
-        limit = 20
+        limit = 20  # Workday rejects larger pages
         offset = 0
-        max_pages = 5
+        max_pages = 100  # safety stop (2000 postings)
+        total = 0
 
         for _ in range(max_pages):
-            payload = json.dumps({
-                "appliedFacets": {},
-                "limit": limit,
-                "offset": offset,
-                "searchText": search_text,
-            }).encode("utf-8")
-            req = urllib.request.Request(url, data=payload, headers=headers)
-            data = None
-            for attempt in range(2):
-                try:
-                    with urllib.request.urlopen(req, context=ssl_ctx, timeout=20) as resp:
-                        data = json.loads(resp.read().decode("utf-8"))
-                        break
-                except urllib.error.HTTPError as e:
-                    if e.code == 429 and attempt == 0:
-                        time.sleep(1.5)
-                        continue
-                    print(f"[-] Error fetching Workday ({tenant}): {e}", file=sys.stderr)
-                    break
-                except Exception as e:
-                    print(f"[-] Error fetching Workday ({tenant}): {e}", file=sys.stderr)
-                    break
-
-            if not data:
-                break
-
+            # A failure on any page raises: a partial board would deactivate the rest of its jobs.
+            data = http_get_json(
+                url,
+                json_body={"appliedFacets": {}, "limit": limit, "offset": offset, "searchText": search_text},
+                headers=headers,
+                context=ssl_ctx,
+                retry_429=True,
+            )
             postings = data.get("jobPostings", [])
             if not postings:
                 break
@@ -93,6 +71,7 @@ class WorkdaySource(BaseSource):
                     )
                 )
             offset += limit
-            if offset >= data.get("total", 0):
+            total = max(total, data.get("total", 0))  # Workday may report total on the first page only
+            if offset >= total:
                 break
         return jobs
