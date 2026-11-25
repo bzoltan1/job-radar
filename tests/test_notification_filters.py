@@ -101,5 +101,19 @@ class TestNotificationSinks(unittest.TestCase):
         self.assertNotIn("[120]", args[1])
 
 
+    @patch("subprocess.run")
+    @patch("shutil.which", return_value="/usr/bin/notify-send")
+    def test_desktop_sink_only_announces_new_jobs(self, mock_which, mock_run):
+        old = make_dummy_job("old", 120, ["loc:home_country"])
+        new = make_dummy_job("new", 75, ["loc:home_country"])
+        DesktopSink().export([old, new], {"new_job_ids": {"new"}})
+        self.assertIn("[75]", mock_run.call_args[0][0][1])
+        mock_run.reset_mock()
+        DesktopSink().export([old], {"new_job_ids": set()})
+        self.assertFalse(mock_run.called)
+        DesktopSink().export([old], {"new_job_ids": set(), "force_notify": True})
+        self.assertTrue(mock_run.called)
+
+
 if __name__ == "__main__":
     unittest.main()

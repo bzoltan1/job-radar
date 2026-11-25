@@ -11,6 +11,7 @@ from radar.sinks.base import BaseSink
 
 class RssSink(BaseSink):
     name = "rss"
+    snapshot = True
 
     def export(self, jobs: List[Job], context: Dict[str, Any]):
         output_path = context.get("feed_path", FEED_PATH)

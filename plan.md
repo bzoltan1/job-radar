@@ -9,7 +9,7 @@ Source: /code-review high. Items 1-11 verified by reading; 1, 4, 5, 8 reproduced
 - [x] 4. location: `eu`/`european union` added to geo regex; bare "Fully Remote"/"100% remote" treated like "Remote" (emea_remote). Other keyword-only remotes with no region (e.g. "Remote - Peru") are still dropped.
 - [x] 5. `go`/`c` tech patterns: case-sensitive, tech-context heuristic (built-in for plain `go`/`c` entries; example yaml uses them). Open: your gitignored data/tech_stack.local.yaml still has the old `\b(golang|go)\b` pattern; replace with plain `go` and `c`.
 - [x] 6. obsidian: unique note names per job (plain name for first claimant, hash suffix otherwise; `job_id` in frontmatter), JSON-quoted YAML values, dossier/link names sanitised. Open: stale notes of inactive jobs are never archived (`update_frontmatter_for_archive` is unused).
-- [ ] 7. rss/obsidian/desktop sinks built from per-run jobs only; desktop ignores `notified_at`. Fix: build from `get_active_jobs()`. Also: sinks use in-memory `job.score` (no semantic bonus) – read stored score instead.
+- [x] 7. `snapshot` sinks (rss, obsidian) get all stored active jobs (`job_from_row`); other sinks get stored scores (`apply_stored_scores`); desktop announces only jobs first seen this sync (`new_job_ids`) unless `--force-notify`. Open: desktop dedupe is per-run, not persisted; `radar.py top` still reads DB (unchanged).
 - [ ] 8. Lever `createdAt` (epoch ms) unparsed; Greenhouse uses `updated_at` as posted date.
 - [ ] 9. Semantic: stale pillars returned; profile change never re-queues jobs.
 - [ ] 10. `config.py` swallows all exceptions → silent 0% matches on bad YAML.

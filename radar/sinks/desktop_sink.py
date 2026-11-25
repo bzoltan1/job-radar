@@ -12,9 +12,11 @@ class DesktopSink(BaseSink):
     name = "desktop"
 
     def export(self, jobs: List[Job], context: Dict[str, Any]):
+        new_ids = context.get("new_job_ids")  # only announce roles first seen this sync
         eligible = [
             j for j in jobs
             if not any("loc:foreign_restriction" in t for t in j.tags)
+            and (new_ids is None or context.get("force_notify") or j.id in new_ids)
         ]
         notify_bin = shutil.which("notify-send")
         if not eligible or not notify_bin:

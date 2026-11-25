@@ -81,5 +81,53 @@ class TestSyncEmptyFetch(unittest.TestCase):
         self.assertEqual(seen[0][0], 1)  # row already stored and active when rss runs
 
 
+    def test_snapshot_sinks_get_all_active_jobs_and_others_get_stored_scores(self):
+        from radar import cli
+        from radar.db import save_job_embedding
+        from radar.sinks import get_sink as real_get_sink
+
+        conn = get_db(":memory:")
+        upsert_job(conn, Job(id="other1", company_id="other", title="SRE", location="Remote", url="u", score=90))
+        fresh = Job(id="j1", company_id="acme", title="SRE", location="Remote", url="u", score=60)
+        upsert_job(conn, fresh)
+        save_job_embedding(conn, "j1", "m", [0.1], 20, "semantic:foo")  # stored score 80
+
+        source = MagicMock()
+        source.fetch.return_value = [RawJob(id="j1", company_id="acme", title="SRE", location="Remote", url="u")]
+        engine = MagicMock()
+        engine.process.return_value = fresh
+        feed, alert = MagicMock(snapshot=True), MagicMock(snapshot=False)
+        sinks = {"rss": feed, "telegram": alert}
+        args = argparse.Namespace(company="acme", min_score=0, sinks="rss,telegram", notify=False, force_notify=False)
+        with patch.object(cli, "get_db", return_value=conn), \
+             patch.object(cli, "load_targets", return_value=[CompanyTarget(id="acme", name="Acme")]), \
+             patch.object(cli, "get_source", return_value=source), \
+             patch.object(cli, "PipelineEngine", return_value=engine), \
+             patch.object(cli, "get_sink", side_effect=lambda n: real_get_sink("db") if n == "db" else sinks[n]):
+            cli.cmd_sync(args)
+        self.assertEqual({j.id for j in feed.export.call_args[0][0]}, {"other1", "j1"})
+        alerted = alert.export.call_args[0][0]
+        self.assertEqual([(j.id, j.score) for j in alerted], [("j1", 80)])
+        self.assertEqual(alert.export.call_args[0][1]["new_job_ids"], set())  # j1 already stored
+
+
+class TestJobFromRow(unittest.TestCase):
+    def test_roundtrip(self):
+        from radar.db import job_from_row
+        from radar.models import ProfileMatch, SalaryInfo
+
+        conn = get_db(":memory:")
+        job = Job(
+            id="r1", company_id="c", title="T", location="L", url="u", score=70, tags=["a:b", "c:d"],
+            is_home_direct=True, content="body",
+            salary=SalaryInfo(min_val=1, max_val=2, currency="EUR", display="1-2", norm_max_eur=2),
+            profile=ProfileMatch(match_pct=50, matched_skills=["x", "y"], pitch_bullets=["p1", "p2"]),
+        )
+        upsert_job(conn, job)
+        got = job_from_row(dict(conn.execute("SELECT * FROM jobs WHERE id='r1'").fetchone()))
+        for f in ("id", "company_id", "title", "location", "url", "score", "tags", "is_home_direct", "salary", "profile", "content"):
+            self.assertEqual(getattr(got, f), getattr(job, f), f)
+
+
 if __name__ == "__main__":
     unittest.main()

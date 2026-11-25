@@ -261,6 +261,7 @@ SORT score DESC, profile_match_pct DESC
 
 class ObsidianSink(BaseSink):
     name = "obsidian"
+    snapshot = True
 
     def export(self, jobs: List[Job], context: Dict[str, Any]):
         vault_path = context.get("vault_path") or get_obsidian_vault_path()

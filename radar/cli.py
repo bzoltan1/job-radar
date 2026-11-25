@@ -12,10 +12,12 @@ from radar.config import (
     load_targets,
 )
 from radar.db import (
+    apply_stored_scores,
     deactivate_company_jobs,
     get_active_jobs,
     get_db,
     get_existing_first_seen,
+    job_from_row,
     update_job_status,
 )
 from radar.discovery import add_peer, list_peers, query_cncf
@@ -38,6 +40,7 @@ def cmd_sync(args):
     engine = PipelineEngine()
     total_scanned = 0
     all_processed_jobs = []
+    new_job_ids = set()
 
     print(f"[*] Syncing {len(targets)} target companies...")
     for target in targets:
@@ -68,6 +71,8 @@ def cmd_sync(args):
             if job and job.score >= args.min_score:
                 all_processed_jobs.append(job)
                 target_matched += 1
+                if raw_job.id not in existing_first_seen:
+                    new_job_ids.add(job.id)
 
         print(f"  + {target.name:<24} | Found: {len(raw_jobs):<4} | Matched: {target_matched}")
 
@@ -85,14 +90,21 @@ def cmd_sync(args):
         "db_conn": conn,
         "min_score": args.min_score,
         "force_notify": getattr(args, "force_notify", False),
+        "new_job_ids": new_job_ids,
     }
 
+    snapshot_jobs = all_processed_jobs
     for s_name in sink_names:
         sink = get_sink(s_name)
-        if sink:
-            sink.export(all_processed_jobs, sink_context)
-        else:
+        if not sink:
             print(f"[-] Warning: Sink '{s_name}' not found.", file=sys.stderr)
+            continue
+        sink.export(snapshot_jobs if sink.snapshot else all_processed_jobs, sink_context)
+        if s_name == "db":
+            # Later sinks see stored scores (incl. semantic bonus); snapshot sinks see every active
+            # job, so a partial sync (--company) or a failed fetch doesn't shrink the feed/vault.
+            apply_stored_scores(conn, all_processed_jobs)
+            snapshot_jobs = [job_from_row(r) for r in get_active_jobs(conn, min_score=args.min_score)]
 
     print(f"\n[+] Sync complete. Total scanned: {total_scanned}, Matched: {len(all_processed_jobs)}")
 

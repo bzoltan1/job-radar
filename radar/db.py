@@ -207,6 +207,48 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
             )
 
 
+def apply_stored_scores(conn: sqlite3.Connection, jobs: List[Job]):
+    """Overwrite score/tags of in-memory jobs with the stored ones (which include the semantic bonus)."""
+    for j in jobs:
+        row = conn.execute("SELECT score, tags FROM jobs WHERE id = ?", (j.id,)).fetchone()
+        if row:
+            j.score = row["score"] or 0
+            j.tags = [t for t in (row["tags"] or "").split(";") if t]
+
+
+def job_from_row(row: Dict[str, Any]) -> Job:
+    """Rebuild a Job from a stored jobs row (inverse of upsert_job)."""
+    return Job(
+        id=row["id"],
+        company_id=row["company_id"],
+        title=row["title"],
+        location=row["location"] or "",
+        url=row["url"] or "",
+        score=row["score"] or 0,
+        tags=[t for t in (row["tags"] or "").split(";") if t],
+        is_home_direct=bool(row["is_home_direct"]),
+        is_emea_remote=bool(row["is_emea_remote"]),
+        salary=SalaryInfo(
+            min_val=row["salary_min"] or 0,
+            max_val=row["salary_max"] or 0,
+            currency=row["salary_currency"] or "",
+            display=row["salary_display"] or "",
+            norm_max_eur=row["salary_norm_max"] or 0,
+        ),
+        profile=ProfileMatch(
+            match_pct=row["profile_match_pct"] or 0,
+            matched_skills=[s for s in (row["matched_skills"] or "").split(", ") if s],
+            pitch_bullets=[b for b in (row["pitch_bullets"] or "").split("\n") if b],
+        ),
+        content=row["content"] or "",
+        first_seen=row["first_seen"],
+        last_seen=row["last_seen"],
+        active=bool(row["active"]),
+        notified_at=row["notified_at"],
+        status=row["status"] or "new",
+    )
+
+
 def get_active_jobs(
     conn: sqlite3.Connection,
     min_score: int = 0,
