@@ -356,3 +356,27 @@ class TestBadConfigFiles(unittest.TestCase):
         with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
             pass
         self.assertEqual(_read_yaml_cached(f.name, {"mtime": None, "data": None}, "x", {"d": 1}), {"d": 1})
+
+
+class TestDecideLocation(unittest.TestCase):
+    def facts(self, **kw):
+        from radar.pipeline.location import LocationFacts
+
+        base = dict(direct_home=False, direct_allowed=False, remote=False, geo_remote=False, hybrid_or_onsite=False,
+                    matches_home_city=False, has_different_city=False, non_eu=False, global_or_emea=False,
+                    foreign_countries=frozenset())
+        return LocationFacts(**{**base, **kw})
+
+    def test_verdicts(self):
+        from radar.pipeline.location import decide_location as d
+
+        self.assertEqual(d(self.facts(direct_home=True, direct_allowed=True), False), "home")
+        self.assertEqual(d(self.facts(direct_allowed=True), False), "allowed")
+        self.assertEqual(d(self.facts(remote=True, foreign_countries=frozenset({"poland"})), False), "foreign")
+        self.assertEqual(d(self.facts(remote=True, geo_remote=True), False), "emea")
+        self.assertIsNone(d(self.facts(remote=True), False))  # remote keyword, no region/country
+        self.assertIsNone(d(self.facts(), False))
+        self.assertIsNone(d(self.facts(direct_home=True, hybrid_or_onsite=True), True))  # remote_only: hybrid elsewhere
+        self.assertEqual(d(self.facts(direct_home=True, hybrid_or_onsite=True, matches_home_city=True), True), "home")
+        self.assertIsNone(d(self.facts(remote=True, geo_remote=True, non_eu=True), False))
+        self.assertEqual(d(self.facts(remote=True, geo_remote=True, non_eu=True, global_or_emea=True), False), "emea")
