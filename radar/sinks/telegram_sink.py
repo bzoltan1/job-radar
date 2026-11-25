@@ -57,11 +57,11 @@ def format_jobs_html(jobs: List[Job], header: Optional[str] = None) -> str:
     else:
         lines.append(f"🎯 <b>Job Radar: {count} New Top Matches</b>\n")
 
-    for j in jobs[:8]:
+    for j in jobs:
         comp = html.escape(j.company_id.capitalize())
         title = html.escape(j.title)
         loc = html.escape(j.location)
-        url = j.url
+        url = html.escape(j.url, quote=True)
         score = j.score
         match_pct = j.profile.match_pct
         sal = html.escape(j.salary.display or "")
@@ -77,10 +77,22 @@ def format_jobs_html(jobs: List[Job], header: Optional[str] = None) -> str:
             lines.append(f"  🛠️ <code>{skills}</code>")
         lines.append("")
 
-    if count > 8:
-        lines.append(f"<i>...and {count - 8} more roles in Obsidian.</i>")
-
     return "\n".join(lines).strip()
+
+
+CHUNK_SIZE = 8  # shortcut: sized by job count, not the 4096-char Telegram limit; split by length if titles get huge
+
+
+def send_jobs(jobs: List[Job], token: Optional[str] = None, chat_id: Optional[int] = None) -> List[Job]:
+    """Send jobs best-score-first in chunks; return the jobs whose chunk was delivered."""
+    ranked = sorted(jobs, key=lambda j: j.score, reverse=True)
+    sent: List[Job] = []
+    for i in range(0, len(ranked), CHUNK_SIZE):
+        chunk = ranked[i:i + CHUNK_SIZE]
+        if not send_telegram_message(format_jobs_html(chunk), token=token, chat_id=chat_id):
+            break
+        sent.extend(chunk)
+    return sent
 
 
 class TelegramSink(BaseSink):
@@ -121,10 +133,9 @@ class TelegramSink(BaseSink):
         if not eligible_jobs:
             return
 
-        msg = format_jobs_html(eligible_jobs)
-        ok = send_telegram_message(msg)
-        if ok:
-            print(f"[+] Dispatched Telegram alert for {len(eligible_jobs)} roles.")
+        sent = send_jobs(eligible_jobs)
+        if sent:
+            print(f"[+] Dispatched Telegram alert for {len(sent)}/{len(eligible_jobs)} roles.")
             if conn:
                 from radar.db import mark_notified
-                mark_notified(conn, [j.id for j in eligible_jobs])
+                mark_notified(conn, [j.id for j in sent])

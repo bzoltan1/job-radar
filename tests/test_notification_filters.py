@@ -43,6 +43,31 @@ class TestNotificationSinks(unittest.TestCase):
         self.assertIn("Job Radar: 1 New Top Matches", call_arg)
 
     @patch("radar.sinks.telegram_sink.send_telegram_message")
+    def test_telegram_sink_chunks_by_score_and_marks_only_sent(self, mock_send):
+        from radar.db import get_db, upsert_job
+
+        conn = get_db(":memory:")
+        jobs = [make_dummy_job(f"j{i}", 70 + i, ["loc:home_country"], title=f"Role {i}") for i in range(10)]
+        for j in jobs:
+            upsert_job(conn, j)
+        mock_send.side_effect = [True, False]  # second chunk fails
+        TelegramSink().export(jobs, {"min_score": 70, "db_conn": conn})
+
+        self.assertEqual(mock_send.call_count, 2)
+        first = mock_send.call_args_list[0][0][0]
+        self.assertIn("Role 9", first)  # best score leads
+        self.assertNotIn("Role 0<", first)
+        notified = {r[0] for r in conn.execute("SELECT id FROM jobs WHERE notified_at IS NOT NULL")}
+        self.assertEqual(notified, {f"j{i}" for i in range(2, 10)})  # top 8 only; j0, j1 retried next run
+
+    def test_format_escapes_url(self):
+        from radar.sinks.telegram_sink import format_jobs_html
+
+        job = make_dummy_job("j1", 80, [])
+        job.url = 'https://x.com/?a=1&b="2"'
+        self.assertIn('href="https://x.com/?a=1&amp;b=&quot;2&quot;"', format_jobs_html([job]))
+
+    @patch("radar.sinks.telegram_sink.send_telegram_message")
     def test_telegram_sink_skips_when_all_foreign_restriction(self, mock_send):
         mock_send.return_value = True
         sink = TelegramSink()
