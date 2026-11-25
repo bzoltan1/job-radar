@@ -55,5 +55,31 @@ class TestSyncEmptyFetch(unittest.TestCase):
         self.assertEqual(conn.execute("SELECT active FROM jobs WHERE id='j1'").fetchone()[0], 1)
 
 
+    def test_sinks_without_db_still_store_jobs_before_other_sinks(self):
+        from radar import cli
+        from radar.sinks import get_sink as real_get_sink
+
+        conn = get_db(":memory:")
+        job = Job(id="j1", company_id="acme", title="SRE", location="Remote", url="u", score=90)
+        source = MagicMock()
+        source.fetch.return_value = [RawJob(id="j1", company_id="acme", title="SRE", location="Remote", url="u")]
+        engine = MagicMock()
+        engine.process.return_value = job
+        seen = []
+        other = MagicMock()
+        other.export.side_effect = lambda jobs, ctx: seen.append(
+            conn.execute("SELECT active FROM jobs WHERE id='j1'").fetchone()
+        )
+        args = argparse.Namespace(company=None, min_score=0, sinks="rss", notify=False, force_notify=False)
+        with patch.object(cli, "get_db", return_value=conn), \
+             patch.object(cli, "load_targets", return_value=[CompanyTarget(id="acme", name="Acme")]), \
+             patch.object(cli, "get_source", return_value=source), \
+             patch.object(cli, "PipelineEngine", return_value=engine), \
+             patch.object(cli, "get_sink", side_effect=lambda n: real_get_sink("db") if n == "db" else other):
+            cli.cmd_sync(args)
+        self.assertEqual(len(seen), 1)
+        self.assertEqual(seen[0][0], 1)  # row already stored and active when rss runs
+
+
 if __name__ == "__main__":
     unittest.main()

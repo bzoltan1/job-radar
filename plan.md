@@ -4,12 +4,12 @@ Source: /code-review high. Items 1-11 verified by reading; 1, 4, 5, 8 reproduced
 
 ## Bugs
 - [x] 1. `db.upsert_job` dropped the semantic bonus each sync. Fix: carry over `semantic_score` + `semantic:` tag, add to score (review rejected the first fix, reset to pending: with embed batch 100, jobs beyond top 100 would never be re-embedded).
-- [ ] 2. `cli.cmd_sync` deactivates jobs, only `db` sink reactivates. `--sinks rss` wipes active set; `telegram,db` never alerts new jobs. Fix: upsert in `cmd_sync` before sinks.
+- [x] 2. `cmd_sync` deactivates jobs but only the `db` sink re-activates. Fix: `db` sink always runs first. Open: sinks still see in-memory `job.score` without semantic bonus (see 7); upsert happens after all targets, so a crash mid-loop leaves earlier companies inactive.
 - [ ] 3. `telegram_sink`: sends first 8 unsorted, marks all notified. Fix: sort by score, chunk, mark only sent; escape URL.
 - [ ] 4. `pipeline/location.py`: "Remote (EU)", "Fully Remote" dropped. Fix: add `eu|european union` to geo regex; decide keyword-only remote handling.
 - [ ] 5. `go` / `c` tech regexes match plain English (config.py, data/tech_stack.example.yaml). Fix: case-sensitive/context-bound.
 - [ ] 6. Obsidian filename collisions + unescaped YAML frontmatter + unsanitised dossier filenames.
-- [ ] 7. rss/obsidian/desktop sinks built from per-run jobs only; desktop ignores `notified_at`. Fix: build from `get_active_jobs()`.
+- [ ] 7. rss/obsidian/desktop sinks built from per-run jobs only; desktop ignores `notified_at`. Fix: build from `get_active_jobs()`. Also: sinks use in-memory `job.score` (no semantic bonus) – read stored score instead.
 - [ ] 8. Lever `createdAt` (epoch ms) unparsed; Greenhouse uses `updated_at` as posted date.
 - [ ] 9. Semantic: stale pillars returned; profile change never re-queues jobs.
 - [ ] 10. `config.py` swallows all exceptions → silent 0% matches on bad YAML.

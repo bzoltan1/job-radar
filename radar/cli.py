@@ -72,7 +72,9 @@ def cmd_sync(args):
         print(f"  + {target.name:<24} | Found: {len(raw_jobs):<4} | Matched: {target_matched}")
 
     # Dispatch to Sinks
-    sink_names = [s.strip().lower() for s in args.sinks.split(",") if s.strip()]
+    # db always runs first: jobs were deactivated above and only upsert_job re-activates them,
+    # and later sinks (telegram dedup via notified_at) read the stored rows.
+    sink_names = ["db"] + [n for n in (s.strip().lower() for s in args.sinks.split(",")) if n and n != "db"]
     if args.notify:
         if "telegram" not in sink_names:
             sink_names.append("telegram")
@@ -278,7 +280,7 @@ def _main():
     p_sync = sub.add_parser("sync", help="Scrape ATS sources, run pipeline stages, and export to sinks")
     p_sync.add_argument("--min-score", type=int, default=50, help="Minimum score to store (default: 50)")
     p_sync.add_argument("--company", help="Only sync a specific company ID")
-    p_sync.add_argument("--sinks", default="db,rss,obsidian", help="Comma-separated sink names (default: db,rss,obsidian)")
+    p_sync.add_argument("--sinks", default="db,rss,obsidian", help="Comma-separated sink names; db always runs (default: db,rss,obsidian)")
     p_sync.add_argument("--notify", action="store_true", help="Dispatch notifications (telegram, desktop)")
     p_sync.add_argument("--force-notify", action="store_true", help="Force notification of all eligible jobs")
 
