@@ -9,20 +9,29 @@ from radar.config import (
     get_location_config,
     load_all_intel,
     load_company_intel,
+    load_profile,
     load_targets,
 )
 from radar.db import (
+    VALID_STATUSES,
     apply_stored_scores,
     deactivate_company_jobs,
     get_active_jobs,
     get_db,
     get_existing_first_seen,
+    get_pending_embedding_jobs,
     job_from_row,
+    save_job_embedding,
     update_job_status,
 )
 from radar.discovery import add_peer, list_peers, query_cncf
 from radar.models import PipelineContext
 from radar.pipeline.engine import PipelineEngine
+from radar.semantic import (
+    ensure_profile_embeddings,
+    evaluate_semantic_match,
+    get_embedding_provider,
+)
 from radar.sinks import get_sink, list_sinks
 from radar.sources import get_source, list_sources
 
@@ -172,15 +181,6 @@ def cmd_status(args):
     if res:
         print(f"[+] Updated: {res}")
     else:
-        print(f"[-] No active job matched: {args.job_id}")
-
-
-def cmd_apply(args):
-    conn = get_db()
-    res = update_job_status(conn, args.job_id, "applied")
-    if res:
-        print(f"[+] Role marked APPLIED: {res}")
-    else:
         print(f"[-] No job matched: {args.job_id}")
 
 
@@ -240,14 +240,6 @@ def cmd_stats(args):
 
 def cmd_embed(args):
     """Process pending job embeddings locally and score semantic similarity."""
-    from radar.config import load_profile
-    from radar.db import get_db, get_pending_embedding_jobs, save_job_embedding
-    from radar.semantic import (
-        ensure_profile_embeddings,
-        evaluate_semantic_match,
-        get_embedding_provider,
-    )
-
     conn = get_db()
     profile = load_profile()
     provider = get_embedding_provider()
@@ -290,6 +282,7 @@ def _main():
 
     # sync
     p_sync = sub.add_parser("sync", help="Scrape ATS sources, run pipeline stages, and export to sinks")
+    p_sync.set_defaults(func=cmd_sync)
     p_sync.add_argument("--min-score", type=int, default=50, help="Minimum score to store (default: 50)")
     p_sync.add_argument("--company", help="Only sync a specific company ID")
     p_sync.add_argument("--sinks", default="db,rss,obsidian", help="Comma-separated sink names; db always runs (default: db,rss,obsidian)")
@@ -298,6 +291,7 @@ def _main():
 
     # top
     p_top = sub.add_parser("top", help="Show top scored jobs")
+    p_top.set_defaults(func=cmd_top)
     p_top.add_argument("--min-score", type=int, default=50, help="Minimum score filter")
     p_top.add_argument("--home-only", dest="home_only", action="store_true", help="Only show direct home-country locations")
     p_top.add_argument("--by-salary", action="store_true", help="Sort highest paying jobs first")
@@ -310,27 +304,32 @@ def _main():
 
     # review
     p_rev = sub.add_parser("review", help="Detailed review of top matches with tailored pitches")
+    p_rev.set_defaults(func=cmd_review)
     p_rev.add_argument("--min-score", type=int, default=100, help="Minimum score (default: 100)")
     p_rev.add_argument("--limit", type=int, default=10, help="Limit number of roles (default: 10)")
 
     # status
     p_stat = sub.add_parser("status", help="Update job application status")
+    p_stat.set_defaults(func=cmd_status)
     p_stat.add_argument("job_id", help="Job ID or title substring")
-    p_stat.add_argument("status", choices=["new", "reviewing", "applied", "interviewing", "offer", "rejected", "archived"])
+    p_stat.add_argument("status", choices=VALID_STATUSES)
 
     # apply
-    p_app = sub.add_parser("apply", help="Mark job as applied")
+    p_app = sub.add_parser("apply", help="Mark job as applied (alias for: status <job> applied)")
     p_app.add_argument("job_id", help="Job ID or title substring")
+    p_app.set_defaults(func=cmd_status, status="applied")
 
     # company
     p_comp = sub.add_parser("company", help="View company dossier")
+    p_comp.set_defaults(func=cmd_company)
     p_comp.add_argument("company_id", help="Company ID (e.g. sysdig, datadog, grafanalabs)")
 
     # stats
-    sub.add_parser("stats", help="Database statistics and plugin registry")
+    sub.add_parser("stats", help="Database statistics and plugin registry").set_defaults(func=cmd_stats)
 
     # embed
     p_emb = sub.add_parser("embed", help="Run offline local semantic embedding and similarity scoring")
+    p_emb.set_defaults(func=cmd_embed)
     p_emb.add_argument("--batch-size", type=int, default=100, help="Number of pending jobs to process (default: 100)")
     p_emb.add_argument("--reindex-profile", action="store_true", help="Force recomputing profile pillar embeddings")
 
@@ -342,39 +341,19 @@ def _main():
     p_dlist.add_argument("--category", help="Filter by category")
     p_dlist.add_argument("--tier", help="Filter by tier")
     p_dlist.add_argument("--home-only", action="store_true", help="Only show companies known to hire via EOR")
+    p_dlist.set_defaults(func=lambda a: list_peers(a.category, a.tier, a.home_only))
 
     p_dadd = disc_sub.add_parser("add", help="Add peer company to tracked targets")
     p_dadd.add_argument("company_id", help="Company ID to add")
+    p_dadd.set_defaults(func=lambda a: add_peer(a.company_id))
 
     p_dcncf = disc_sub.add_parser("cncf", help="Search CNCF landscape")
     p_dcncf.add_argument("query", help="Keyword (e.g. ebpf, storage, runtime)")
     p_dcncf.add_argument("--limit", type=int, default=20, help="Max results")
+    p_dcncf.set_defaults(func=lambda a: query_cncf(a.query, a.limit))
 
     args = parser.parse_args()
-
-    if args.command == "sync":
-        cmd_sync(args)
-    elif args.command == "top":
-        cmd_top(args)
-    elif args.command == "review":
-        cmd_review(args)
-    elif args.command == "status":
-        cmd_status(args)
-    elif args.command == "apply":
-        cmd_apply(args)
-    elif args.command == "company":
-        cmd_company(args)
-    elif args.command == "stats":
-        cmd_stats(args)
-    elif args.command == "embed":
-        cmd_embed(args)
-    elif args.command == "discover":
-        if args.discover_cmd == "list":
-            list_peers(args.category, args.tier, args.home_only)
-        elif args.discover_cmd == "add":
-            add_peer(args.company_id)
-        elif args.discover_cmd == "cncf":
-            query_cncf(args.query, args.limit)
+    args.func(args)
 
 
 if __name__ == "__main__":

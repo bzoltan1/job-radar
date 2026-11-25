@@ -131,3 +131,21 @@ class TestJobFromRow(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCliDispatch(unittest.TestCase):
+    def run_cli(self, *argv):
+        import sys
+        from radar import cli
+
+        conn = get_db(":memory:")
+        with patch.object(sys, "argv", ["radar", *argv]), patch.object(cli, "get_db", return_value=conn), \
+             patch.object(cli, "update_job_status", return_value="Acme: SRE") as upd:
+            cli.main()
+        return upd
+
+    def test_apply_is_status_applied(self):
+        self.assertEqual(self.run_cli("apply", "sre").call_args[0][1:], ("sre", "applied"))
+
+    def test_status_passes_through(self):
+        self.assertEqual(self.run_cli("status", "sre", "offer").call_args[0][1:], ("sre", "offer"))

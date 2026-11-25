@@ -17,7 +17,7 @@ Source: /code-review high. Items 1-11 verified by reading; 1, 4, 5, 8 reproduced
 
 ## Refactors
 - [x] db.py: single `upsert_job` statement; `update_job_status` = exact id first, then active+best-score title match, `%`/`_` escaped; `struct` import hoisted.
-- [ ] cli.py: `set_defaults(func=...)` dispatch; merge `cmd_apply` into `cmd_status`; hoist `get_db` import in `cmd_embed`.
+- [x] cli.py: `set_defaults(func=...)` dispatch; `apply` is an alias of `status <job> applied` (`cmd_apply` removed); `status` choices from `VALID_STATUSES`; `cmd_embed` imports hoisted. NOTE: your data/intel.local/dynatrace.yaml has a YAML error (line 32) that was silently skipped before.
 - [ ] Salary extraction: module-level regexes, one currency helper, fix lowercase `eur`/unknown-currency fallback.
 - [ ] `LocationStage.process`: split classifier / scorer.
 - [ ] Dead/fragile: `title.py` `get_tech_stack_re`/`TECH_STACK_RE`; combined tech regex inline flags; `workday.py:job_prefix`; `profile.py` magic `/80` + unguarded regex; class-in-loop in `sources/__init__.py`.
