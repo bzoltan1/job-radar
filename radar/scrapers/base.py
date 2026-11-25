@@ -17,7 +17,7 @@ class BaseHtmlScraper(ABC):
     default_headers: Dict[str, str] = {
         "User-Agent": "JobRadar/2.0 (compatible; generic-html-scraper; +https://github.com/ilmanzo/job-radar)",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Accept-Language": "en-US,en;q=0.9",
     }
 
     def fetch_html(

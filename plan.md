@@ -13,7 +13,7 @@ Source: /code-review high. Items 1-11 verified by reading; 1, 4, 5, 8 reproduced
 - [x] 8. `parse_job_date`: epoch s/ms, tz-aware -> UTC; Greenhouse uses `first_published` (verified on live cloudflare board) with `updated_at` fallback. Open: other sources (Workable, Recruitee, Deel, SmartRecruiters) not audited for date semantics.
 - [x] 9. semantic pillars: cache keyed by text hash, removed pillars deleted, any change re-queues jobs (re-embedded 100 per `embed` run). First run after upgrade re-embeds once (new `text_hash` column is empty).
 - [x] 10. config: broken/missing settings, profile, tech-stack files raise `ConfigError` naming the file; bad intel dossiers warn on stderr. Open: `load_dotenv_if_present` and Telegram legacy-json still swallow errors; `load_targets`/`load_countries` raise raw yaml errors.
-- [ ] 11. Personal data in committed code (UA, Accept-Language, Amazon queries, persona regexes, systemd path).
+- [x] 11. Accept-Language neutral; Amazon search terms from target `queries`/`country_queries` (your targets.local.yaml updated to keep current behaviour); personal systemd unit untracked + gitignored (example path generic). Decided NOT to externalise title/role persona regexes (systems/SRE defaults are generic role vocabulary, not personal data; needs a design call if you want per-profile role patterns). Project UA URL kept (public repo URL).
 
 ## Refactors
 - [ ] db.py: merge two `upsert_job` statements (`COALESCE(?, CURRENT_TIMESTAMP)`); deterministic `update_job_status`; hoist `struct` import.

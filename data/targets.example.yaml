@@ -10,6 +10,7 @@
 #   entity_in_home_country: company has a legal entity in YOUR country (+score)
 #   eor_supported: company hires via Employer of Record (+score)
 #   allowed_countries: optional extra countries accepted for this company only
+#   amazon only: queries (search terms, worldwide) and country_queries (terms, home country only)
 
 companies:
   - id: gitlab

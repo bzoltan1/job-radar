@@ -6,6 +6,7 @@ import re
 import sys
 import urllib.request
 from typing import Dict, List
+from urllib.parse import quote_plus
 
 from radar.config import get_location_config
 from radar.models import CompanyTarget, RawJob
@@ -36,17 +37,14 @@ class AmazonSource(BaseSource):
         home_country = loc_cfg["home_country"].lower()
         country_code = AMAZON_COUNTRY_CODES.get(home_country)
 
-        queries = [
-            "https://www.amazon.jobs/en/search.json?base_query=bottlerocket&result_limit=50",
-            "https://www.amazon.jobs/en/search.json?base_query=amazon+linux&result_limit=50",
-            "https://www.amazon.jobs/en/search.json?base_query=firecracker&result_limit=50",
-            "https://www.amazon.jobs/en/search.json?base_query=linux+kernel&result_limit=50",
-        ]
+        # Search terms come from the target (`queries`: global; `country_queries`: home country only).
+        base = "https://www.amazon.jobs/en/search.json?result_limit=50"
+        queries = [f"{base}&base_query={quote_plus(t)}" for t in target.extra.get("queries") or []]
         if country_code:  # unknown country: skip country-scoped queries
+            queries.append(f"{base}&country={country_code}&category[]=software-development")
             queries += [
-                f"https://www.amazon.jobs/en/search.json?country={country_code}&category[]=software-development&result_limit=50",
-                f"https://www.amazon.jobs/en/search.json?country={country_code}&base_query=linux&result_limit=50",
-                f"https://www.amazon.jobs/en/search.json?country={country_code}&base_query=systems&result_limit=50",
+                f"{base}&country={country_code}&base_query={quote_plus(t)}"
+                for t in target.extra.get("country_queries") or []
             ]
         headers = {"User-Agent": "JobRadar/2.0"}
         jobs_by_id = {}

@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=oneshot
 # Adjust WorkingDirectory and ExecStart to your local path.
 # In systemd user units, %h expands to your home directory (e.g. /home/username).
-WorkingDirectory=%h/ws/job-radar
-ExecStart=%h/ws/job-radar/run_radar_cron.sh
+WorkingDirectory=%h/job-radar
+ExecStart=%h/job-radar/run_radar_cron.sh
 StandardOutput=journal
 StandardError=journal

@@ -15,3 +15,4 @@ data/settings.yaml
 
 # Personal data (see README "Personalize")
 data/intel.local/
+systemd/job-radar.service

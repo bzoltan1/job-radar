@@ -1,8 +1,11 @@
 """Tests for target companies configuration and ATS source plugins."""
 
+import os
 import unittest
+from unittest.mock import patch
 
 from radar.config import load_targets
+from radar.models import CompanyTarget
 from radar.sources import get_source, list_sources
 from radar.sources.base import parse_job_date
 
@@ -56,3 +59,28 @@ class TestParseJobDate(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+
+
+class TestAmazonQueries(unittest.TestCase):
+    def fetched_urls(self, **extra):
+        from radar.sources.custom import AmazonSource
+
+        urls = []
+
+        def fake_urlopen(req, timeout=0):
+            urls.append(req.full_url)
+            raise OSError("offline")
+
+        with patch.dict(os.environ, {"CANDIDATE_COUNTRY": "Italy"}), patch("urllib.request.urlopen", fake_urlopen):
+            AmazonSource().fetch(CompanyTarget(id="aws", name="AWS", extra=extra))
+        return urls
+
+    def test_no_built_in_search_terms(self):
+        urls = self.fetched_urls()
+        self.assertEqual(len(urls), 1)
+        self.assertNotIn("base_query", urls[0])
+
+    def test_terms_come_from_target(self):
+        urls = self.fetched_urls(queries=["amazon linux"], country_queries=["go"])
+        self.assertTrue(any("base_query=amazon+linux" in u and "country=" not in u for u in urls))
+        self.assertTrue(any("country=ITA" in u and "base_query=go" in u for u in urls))
