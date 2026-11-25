@@ -104,7 +104,7 @@ FEED_PATH = _env_path("JOB_RADAR_FEED") or os.path.join(BASE_DIR, "feed.xml")
 
 _SETTINGS_CACHE: Dict[str, Any] = {"mtime": None, "data": None}
 _PROFILE_CACHE: Dict[str, Any] = {"mtime": None, "data": None}
-_TECH_STACK_CACHE: Dict[str, Any] = {"mtime": None, "data": None, "compiled": None, "regex": None}
+_TECH_STACK_CACHE: Dict[str, Any] = {"mtime": None, "data": None, "compiled": None}
 
 def _parse_yaml(path: str, label: str) -> Tuple[float, Any]:
     """Return (mtime, parsed YAML). A missing or unparsable file raises ConfigError naming it;
@@ -207,7 +207,7 @@ def load_tech_stack() -> List[Dict[str, str]]:
         if normalized:
             parsed.append({"name": normalized[0], "pattern": normalized[1]})
 
-    _TECH_STACK_CACHE.update(mtime=mtime, data=parsed, compiled=None, regex=None)
+    _TECH_STACK_CACHE.update(mtime=mtime, data=parsed, compiled=None)
     return parsed
 
 
@@ -229,23 +229,6 @@ def get_compiled_tech_stack() -> List[Tuple[str, re.Pattern]]:
 
     _TECH_STACK_CACHE["compiled"] = compiled
     return compiled
-
-
-def get_tech_stack_regex() -> re.Pattern:
-    """Return single combined regex matching any tracked technology."""
-    load_tech_stack()
-    if _TECH_STACK_CACHE["regex"] is not None:
-        return _TECH_STACK_CACHE["regex"]
-
-    compiled = get_compiled_tech_stack()
-    patterns = [p.pattern for _, p in compiled]
-    if not patterns:
-        combined = re.compile(r"(?!)")
-    else:
-        combined = re.compile(rf"(?:{'|'.join(patterns)})", re.IGNORECASE)
-
-    _TECH_STACK_CACHE["regex"] = combined
-    return combined
 
 
 def find_tech_matches(text: str) -> List[str]:

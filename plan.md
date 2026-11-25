@@ -20,7 +20,7 @@ Source: /code-review high. Items 1-11 verified by reading; 1, 4, 5, 8 reproduced
 - [x] cli.py: `set_defaults(func=...)` dispatch; `apply` is an alias of `status <job> applied` (`cmd_apply` removed); `status` choices from `VALID_STATUSES`; `cmd_embed` imports hoisted. NOTE: your data/intel.local/dynatrace.yaml has a YAML error (line 32) that was silently skipped before.
 - [x] Salary extraction: module-level regexes, one `_find_amounts`, currency helper (lowercase eur/usd no longer mislabelled), unknown currency (metadata unit e.g. INR) now normalises to 0 instead of the USD rate. Verified against old implementation on 9.3k generated texts: only diff is the lowercase fix.
 - [x] `LocationStage`: split into `classify_location` (facts dataclass), `decide_location` (pure verdict), scorer; module-level regexes. Verified identical to old implementation on 7.5k generated cases (5 configs).
-- [ ] Dead/fragile: `title.py` `get_tech_stack_re`/`TECH_STACK_RE`; combined tech regex inline flags; `workday.py:job_prefix`; `profile.py` magic `/80` + unguarded regex; class-in-loop in `sources/__init__.py`.
+- [x] Dead/fragile: removed `TECH_STACK_RE`/`get_tech_stack_re`/combined tech regex (title stage uses `find_tech_matches`); workday no-op `job_prefix`; named `FULL_MATCH_WEIGHT`; invalid `skill_matrix` pattern -> `ConfigError`; scraper wrapper class at module level.
 - [ ] Fetch layer: `http_get_json` + `FetchError`; drop `[]` shortcut in `cmd_sync`; Workable per-job requests; Workday 100 cap.
 - [ ] Split `--min-score` into store vs notify thresholds.
 - [ ] Move `PEER_CATALOG` to data file.

@@ -1,7 +1,7 @@
 """Title and Technical Domain filtering stage."""
 
 import re
-from radar.config import get_tech_stack_regex
+from radar.config import find_tech_matches
 from radar.models import Job, PipelineContext, RawJob
 from radar.pipeline.base import PipelineStage, StageResult
 
@@ -46,15 +46,6 @@ DEVOPS_PLATFORM_SRE_RE = re.compile(
 )
 
 
-def get_tech_stack_re() -> re.Pattern:
-    """Return compiled tech stack regex dynamically from configuration."""
-    return get_tech_stack_regex()
-
-
-# Backward-compatibility alias
-TECH_STACK_RE = get_tech_stack_regex()
-
-
 class TitleFilterStage(PipelineStage):
     """Filters out non-engineering or hard-excluded business/sales roles."""
 
@@ -73,7 +64,7 @@ class TitleFilterStage(PipelineStage):
         # Must be technical or match tech stack
         is_eng = bool(ENGINEERING_TITLE_RE.search(title))
         is_sys = bool(SYSTEMS_TITLE_RE.search(title))
-        has_tech = bool(get_tech_stack_regex().search(f"{title} {content}"))
+        has_tech = bool(find_tech_matches(f"{title} {content}"))
 
         if not (is_eng or is_sys or has_tech):
             return StageResult(should_continue=False)

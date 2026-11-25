@@ -81,11 +81,10 @@ class WorkdaySource(BaseSource):
                 combined_loc = f"{loc} - {path_loc}" if path_loc and path_loc != loc else loc
                 full_loc = f"{combined_loc} ({remote_type})" if remote_type else combined_loc
                 job_id = ext_path.split("_")[-1] if "_" in ext_path else ext_path
-                job_prefix = target.id if target.id != tenant else tenant
 
                 jobs.append(
                     RawJob(
-                        id=f"wd_{job_prefix}_{job_id}",
+                        id=f"wd_{target.id}_{job_id}",
                         company_id=target.id,
                         title=title,
                         location=full_loc,

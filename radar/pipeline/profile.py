@@ -3,9 +3,13 @@
 import re
 from typing import Dict, List, Optional, Tuple
 
-from radar.config import load_profile
+from radar.config import ConfigError, load_profile
 from radar.models import Job, PipelineContext, ProfileMatch, RawJob
 from radar.pipeline.base import PipelineStage, StageResult
+
+
+# Matched skill weights summing to this reach a 100% profile match.
+FULL_MATCH_WEIGHT = 80
 
 
 def get_active_skill_matrix() -> List[Tuple[str, str, int, str]]:
@@ -16,6 +20,10 @@ def get_active_skill_matrix() -> List[Tuple[str, str, int, str]]:
         parsed = []
         for item in custom_matrix:
             if isinstance(item, dict) and "pattern" in item and "name" in item:
+                try:
+                    re.compile(item["pattern"])
+                except re.error as e:
+                    raise ConfigError(f"invalid skill_matrix pattern for {item['name']!r}: {e}") from e
                 parsed.append((
                     item["pattern"],
                     item["name"],
@@ -42,7 +50,7 @@ def evaluate_profile(title: str, content: str) -> ProfileMatch:
             if pitch and len(pitch_bullets) < 3:
                 pitch_bullets.append(pitch)
 
-    match_pct = min(100, int((matched_weights / 80) * 100))
+    match_pct = min(100, int((matched_weights / FULL_MATCH_WEIGHT) * 100))
 
     if not pitch_bullets:
         pitch_bullets = [str(p) for p in (load_profile().get("fallback_pitch") or [])]

@@ -11,6 +11,17 @@ from radar.sources.base import BaseSource
 _REGISTRY: Dict[str, BaseSource] = {}
 
 
+class _ScraperSourceWrapper(BaseSource):
+    """Exposes an HTML scraper as a source, keyed by its scraper_id."""
+
+    def __init__(self, scraper, scraper_id: str):
+        self.scraper = scraper
+        self.ats_name = scraper_id
+
+    def fetch(self, target):
+        return self.scraper.scrape(target)
+
+
 def register_source(source_cls: Type[BaseSource]):
     """Instantiate and register a source plugin."""
     instance = source_cls()
@@ -42,15 +53,6 @@ def discover_sources():
             if scraper_id not in _REGISTRY:
                 scraper = get_scraper(scraper_id)
                 if scraper:
-
-                    class _ScraperSourceWrapper(BaseSource):
-                        def __init__(self, s, sid):
-                            self.scraper = s
-                            self.ats_name = sid
-
-                        def fetch(self, target):
-                            return self.scraper.scrape(target)
-
                     _REGISTRY[scraper_id] = _ScraperSourceWrapper(scraper, scraper_id)
     except Exception as e:
         print(f"[-] Warning: Failed to register scraper plugins as sources: {e}")

@@ -10,7 +10,6 @@ from radar.config import (
     get_location_config,
     get_obsidian_vault_path,
     get_salary_expectations,
-    get_tech_stack_regex,
     get_telegram_config,
     load_dotenv_if_present,
     load_profile,
@@ -380,3 +379,23 @@ class TestDecideLocation(unittest.TestCase):
         self.assertEqual(d(self.facts(direct_home=True, hybrid_or_onsite=True, matches_home_city=True), True), "home")
         self.assertIsNone(d(self.facts(remote=True, geo_remote=True, non_eu=True), False))
         self.assertEqual(d(self.facts(remote=True, geo_remote=True, non_eu=True, global_or_emea=True), False), "emea")
+
+
+class TestFragileConfigPatterns(unittest.TestCase):
+    def test_invalid_skill_pattern_names_the_skill(self):
+        from radar.config import ConfigError
+        from radar.pipeline.profile import get_active_skill_matrix
+
+        prof = {"skill_matrix": [{"name": "Broken", "pattern": "(unclosed", "weight": 10}]}
+        with patch("radar.pipeline.profile.load_profile", return_value=prof):
+            with self.assertRaises(ConfigError) as cm:
+                get_active_skill_matrix()
+        self.assertIn("Broken", str(cm.exception))
+
+    def test_tech_pattern_with_inline_flag_does_not_break_other_patterns(self):
+        import radar.config as cfg
+
+        items = [{"name": "a", "pattern": "(?i)alpha"}, {"name": "b", "pattern": r"\bbeta\b"}]
+        parsed = [{"name": i["name"], "pattern": i["pattern"]} for i in items]
+        with patch.dict(cfg._TECH_STACK_CACHE, {"mtime": cfg._mtime(cfg.TECH_STACK_FILE), "data": parsed, "compiled": None}):
+            self.assertEqual(cfg.find_tech_matches("Alpha and beta"), ["a", "b"])
