@@ -2,19 +2,24 @@
 
 from abc import ABC, abstractmethod
 import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 from radar.models import CompanyTarget, RawJob
 
 
-def parse_job_date(date_str: Optional[str]) -> Optional[str]:
-    """Parse ATS date strings into standard YYYY-MM-DD HH:MM:SS format."""
-    if not date_str:
+def parse_job_date(value: Union[str, int, float, None]) -> Optional[str]:
+    """Parse an ATS date (ISO string or epoch seconds/milliseconds) into UTC 'YYYY-MM-DD HH:MM:SS'."""
+    if value is None or value == "":
         return None
     try:
-        clean = str(date_str).replace("Z", "+00:00")
-        dt = datetime.datetime.fromisoformat(clean)
+        if isinstance(value, (int, float)) or (str(value).isdigit() and len(str(value)) >= 10):
+            ts = float(value)
+            dt = datetime.datetime.fromtimestamp(ts / 1000 if ts > 1e11 else ts, datetime.timezone.utc)
+        else:
+            dt = datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            if dt.tzinfo:
+                dt = dt.astimezone(datetime.timezone.utc)
         return dt.strftime("%Y-%m-%d %H:%M:%S")
-    except Exception:
+    except (ValueError, OverflowError, OSError):
         return None
 
 

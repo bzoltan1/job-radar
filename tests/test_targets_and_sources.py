@@ -4,6 +4,7 @@ import unittest
 
 from radar.config import load_targets
 from radar.sources import get_source, list_sources
+from radar.sources.base import parse_job_date
 
 
 class TestTargetsAndSources(unittest.TestCase):
@@ -38,6 +39,18 @@ class TestTargetsAndSources(unittest.TestCase):
         self.assertEqual(targets["gitlab"].allowed_countries, [])
         cs = targets["crowdstrike"]
         self.assertEqual((cs.ats, cs.board, cs.site), ("workday", "crowdstrike", "crowdstrikecareers"))
+
+
+class TestParseJobDate(unittest.TestCase):
+    def test_formats(self):
+        self.assertEqual(parse_job_date(1700000000000), "2023-11-14 22:13:20")  # epoch ms (Lever)
+        self.assertEqual(parse_job_date(1700000000), "2023-11-14 22:13:20")  # epoch s
+        self.assertEqual(parse_job_date("1700000000000"), "2023-11-14 22:13:20")
+        self.assertEqual(parse_job_date("2026-03-09T16:05:19-04:00"), "2026-03-09 20:05:19")  # to UTC
+        self.assertEqual(parse_job_date("2024-01-02T03:04:05Z"), "2024-01-02 03:04:05")
+        self.assertEqual(parse_job_date("2024-01-02"), "2024-01-02 00:00:00")
+        for bad in (None, "", "garbage"):
+            self.assertIsNone(parse_job_date(bad), bad)
 
 
 if __name__ == "__main__":

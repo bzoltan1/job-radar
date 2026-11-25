@@ -55,7 +55,7 @@ class GreenhouseSource(BaseSource):
                             location=loc,
                             url=item.get("absolute_url", ""),
                             content=item.get("content", ""),
-                            posted_date=parse_job_date(item.get("updated_at")),
+                            posted_date=parse_job_date(item.get("first_published") or item.get("updated_at")),
                             metadata={"raw": item.get("metadata", [])},
                         )
                     )
