@@ -105,6 +105,22 @@ class TestDbEmbeddings(unittest.TestCase):
         for expected_val, actual_val in zip(vec, deserialize_vector(emb_row["vector"])):
             self.assertAlmostEqual(expected_val, actual_val, places=5)
 
+    def test_upsert_keeps_semantic_bonus(self):
+        job = Job(
+            id="job_3", company_id="c", title="T", location="Remote",
+            url="u", score=80, content="x", salary=SalaryInfo(),
+            profile=ProfileMatch(), tags=["role:systems"],
+        )
+        upsert_job(self.conn, job)
+        save_job_embedding(self.conn, "job_3", "m", [0.1], 20, "semantic:foo")
+        upsert_job(self.conn, job)
+        upsert_job(self.conn, job)  # idempotent: bonus must not accumulate
+        row = self.conn.execute(
+            "SELECT score, semantic_score, embedding_status, tags FROM jobs WHERE id='job_3'"
+        ).fetchone()
+        self.assertEqual((row["score"], row["semantic_score"], row["embedding_status"]), (100, 20, "done"))
+        self.assertEqual(row["tags"], "role:systems;semantic:foo")
+
     def test_profile_embeddings_storage_and_retrieval(self):
         save_profile_embedding(
             self.conn,

@@ -94,7 +94,12 @@ def deactivate_company_jobs(conn: sqlite3.Connection, company_id: str):
 
 def upsert_job(conn: sqlite3.Connection, job: Job):
     """Insert or update a single processed job."""
-    tags_str = ";".join(job.tags)
+    # Carry over the semantic bonus/tag from `radar embed`: the pipeline score excludes it.
+    prev = conn.execute("SELECT semantic_score, tags FROM jobs WHERE id = ?", (job.id,)).fetchone()
+    sem_score = (prev["semantic_score"] or 0) if prev else 0
+    sem_tags = [t for t in (prev["tags"] or "").split(";") if t.startswith("semantic:")] if prev else []
+    score = job.score + sem_score
+    tags_str = ";".join([*job.tags, *sem_tags])
     matched_skills_str = ", ".join(job.profile.matched_skills)
     pitch_str = "\n".join(job.profile.pitch_bullets)
     content_str = (job.content or "")[:4000]
@@ -136,7 +141,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
                     job.location,
                     int(job.is_home_direct),
                     int(job.is_emea_remote),
-                    job.score,
+                    score,
                     job.url,
                     tags_str,
                     job.salary.min_val,
@@ -186,7 +191,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
                     job.location,
                     int(job.is_home_direct),
                     int(job.is_emea_remote),
-                    job.score,
+                    score,
                     job.url,
                     tags_str,
                     job.salary.min_val,
