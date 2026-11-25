@@ -57,7 +57,11 @@ def extract_salary(raw_job: RawJob) -> SalaryInfo:
         re.IGNORECASE,
     )
     p3 = re.compile(
-        r"([€$£]|EUR|USD|GBP|CHF)?\s*([0-9]{2,3})\s*k\s*(?:-|to|–|and)\s*([€$£]|EUR|USD|GBP|CHF)?\s*([0-9]{2,3})\s*k",
+        r"([€$£]|EUR|USD|GBP|CHF)?\s*([0-9]{2,3}(?:\.[0-9]+)?)\s*k\s*(?:-|to|–|and)\s*([€$£]|EUR|USD|GBP|CHF)?\s*([0-9]{2,3}(?:\.[0-9]+)?)\s*k",
+        re.IGNORECASE,
+    )
+    p4 = re.compile(
+        r"([€$£]|EUR|USD|GBP|CHF)\s*([0-9]{2,3}(?:\.[0-9]+)?)\s*k\b",
         re.IGNORECASE,
     )
 
@@ -85,11 +89,18 @@ def extract_salary(raw_job: RawJob) -> SalaryInfo:
         c1, s1, c2, s2 = m.groups()
         curr = c1 or c2 or "USD"
         curr = {"$": "USD", "€": "EUR", "£": "GBP"}.get(curr, curr.upper())
-        v1 = int(s1) * 1000
-        v2 = int(s2) * 1000
+        v1 = int(float(s1) * 1000)
+        v2 = int(float(s2) * 1000)
         vmin, vmax = min(v1, v2), max(v1, v2)
         if 25000 <= vmax <= 700000:
             matches.append((vmin, vmax, curr))
+
+    for m in p4.finditer(text):
+        c1, s1 = m.groups()
+        curr = {"$": "USD", "€": "EUR", "£": "GBP"}.get(c1, c1.upper())
+        v = int(float(s1) * 1000)
+        if 25000 <= v <= 700000:
+            matches.append((v, v, curr))
 
     if matches:
         eur_matches = [m for m in matches if m[2] == "EUR"]

@@ -24,6 +24,7 @@ class AshbySource(BaseSource):
               locationName
               secondaryLocations { locationName }
               employmentType
+              compensationTierSummary
             }
           }
         }
@@ -47,6 +48,8 @@ class AshbySource(BaseSource):
                     loc = item.get("locationName", "")
                     sec = [s.get("locationName", "") for s in item.get("secondaryLocations", [])]
                     full_loc = "; ".join(filter(None, [loc] + sec))
+                    comp = item.get("compensationTierSummary") or ""
+                    content = f"Compensation: {comp}" if comp else ""
                     jobs.append(
                         RawJob(
                             id=f"ashby_{board_id}_{item['id']}",
@@ -54,7 +57,7 @@ class AshbySource(BaseSource):
                             title=item.get("title", ""),
                             location=full_loc,
                             url=f"https://jobs.ashbyhq.com/{board_id}/{item['id']}",
-                            content="",
+                            content=content,
                         )
                     )
                 return jobs

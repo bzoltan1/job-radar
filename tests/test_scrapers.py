@@ -7,8 +7,27 @@ from radar.models import CompanyTarget
 from radar.scrapers import discover_scrapers, get_scraper, list_scrapers, register_scraper
 from radar.scrapers.base import BaseHtmlScraper
 from radar.scrapers.pagopa import PagoPAScraper
+from radar.pipeline.salary import extract_salary
+from radar.models import RawJob
+from radar.scrapers.flyio import FlyIOScraper
 from radar.sources import get_source, list_sources
 from radar.sources.scraper import HtmlScraperSource
+
+SAMPLE_FLYIO_HTML = """
+<!DOCTYPE html>
+<html>
+<body>
+  <article>
+    <dl>
+      <dd class="font-heading text-[1.4rem]">Networking Engineer: Proxy and Corrosion</dd>
+      <dd><div>Remote</div></dd>
+    </dl>
+    <p class="text-base line-clamp-3">Agent workloads churn machines fast.</p>
+    <a href="/jobs/networking-engineer/"><span class="sr-only">Read more</span></a>
+  </article>
+</body>
+</html>
+"""
 
 SAMPLE_PAGOPA_HTML = """
 <!DOCTYPE html>
@@ -121,6 +140,37 @@ class TestScraperFramework(unittest.TestCase):
         direct_pagopa_source = get_source("pagopa")
         self.assertIsNotNone(direct_pagopa_source)
         self.assertEqual(direct_pagopa_source.ats_name, "pagopa")
+
+    @patch.object(FlyIOScraper, "fetch_html")
+    def test_flyio_scraper_parsing(self, mock_fetch):
+        mock_fetch.return_value = SAMPLE_FLYIO_HTML
+        target = CompanyTarget(
+            id="flyio",
+            name="Fly.io",
+            tier="scaleup",
+            ats="scraper",
+            board="flyio",
+        )
+        scraper = FlyIOScraper()
+        jobs = scraper.scrape(target)
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0].id, "flyio_networking-engineer")
+        self.assertEqual(jobs[0].title, "Networking Engineer: Proxy and Corrosion")
+        self.assertEqual(jobs[0].location, "Remote")
+        self.assertIn("Agent workloads", jobs[0].content)
+
+    def test_ashby_salary_extraction(self):
+        cases = [
+            ("Compensation: $180,880 – $342,000 • Offers Equity", "USD 180k-342k", 314640),
+            ("Compensation: €134K – €177.1K • Offers Equity", "EUR 134k-177k", 177100),
+            ("Compensation: $118K • Offers Equity", "USD 118k", 108560),
+            ("Compensation: $190.5K • Offers Equity", "USD 190k", 175260),
+        ]
+        for text, expected_disp, expected_norm in cases:
+            raw = RawJob(id="test", company_id="test", title="Dev", location="Remote", url="", content=text)
+            sal = extract_salary(raw)
+            self.assertEqual(sal.display, expected_disp)
+            self.assertEqual(sal.norm_max_eur, expected_norm)
 
 
 if __name__ == "__main__":
