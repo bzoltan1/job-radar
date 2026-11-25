@@ -71,6 +71,10 @@ def get_db(db_path: str = DB_PATH) -> sqlite3.Connection:
             )
         """)
 
+        pcols = {r["name"] for r in conn.execute("PRAGMA table_info(profile_embeddings)")}
+        if "text_hash" not in pcols:
+            conn.execute("ALTER TABLE profile_embeddings ADD COLUMN text_hash TEXT DEFAULT ''")
+
         conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_active_score ON jobs(active, score DESC)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_salary ON jobs(salary_norm_max DESC)")
@@ -412,6 +416,7 @@ def save_profile_embedding(
     pillar_name: str,
     model: str,
     vector: List[float],
+    text_hash: str = "",
 ):
     """Save reference embedding for a profile domain pillar."""
     blob = serialize_vector(vector)
@@ -419,15 +424,16 @@ def save_profile_embedding(
     with conn:
         conn.execute(
             """
-            INSERT INTO profile_embeddings (pillar_name, model, dim, vector, updated_at)
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO profile_embeddings (pillar_name, model, dim, vector, text_hash, updated_at)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(pillar_name) DO UPDATE SET
                 model = excluded.model,
                 dim = excluded.dim,
                 vector = excluded.vector,
+                text_hash = excluded.text_hash,
                 updated_at = CURRENT_TIMESTAMP
             """,
-            (pillar_name, model, dim, blob),
+            (pillar_name, model, dim, blob, text_hash),
         )
 
 
@@ -439,3 +445,22 @@ def get_profile_embeddings(conn: sqlite3.Connection, model: str) -> Dict[str, Li
     ).fetchall()
     return {r["pillar_name"]: deserialize_vector(r["vector"]) for r in rows}
 
+
+
+def get_profile_embedding_hashes(conn: sqlite3.Connection, model: str) -> Dict[str, str]:
+    """Pillar name -> hash of the pillar text the cached vector was built from."""
+    rows = conn.execute(
+        "SELECT pillar_name, text_hash FROM profile_embeddings WHERE model = ?", (model,)
+    ).fetchall()
+    return {r["pillar_name"]: r["text_hash"] or "" for r in rows}
+
+
+def delete_profile_embeddings(conn: sqlite3.Connection, names: List[str]):
+    with conn:
+        conn.executemany("DELETE FROM profile_embeddings WHERE pillar_name = ?", [(n,) for n in names])
+
+
+def requeue_embeddings(conn: sqlite3.Connection):
+    """Mark every job for re-embedding (profile pillars changed). Stored bonus is replaced on save."""
+    with conn:
+        conn.execute("UPDATE jobs SET embedding_status = 'pending'")

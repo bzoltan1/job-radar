@@ -143,3 +143,51 @@ class TestDbEmbeddings(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestProfilePillarSync(unittest.TestCase):
+    def setUp(self):
+        from radar.semantic import LocalHashedEmbeddingProvider
+
+        self.conn = get_db(":memory:")
+        self.provider = LocalHashedEmbeddingProvider()
+        job = Job(id="j", company_id="c", title="T", location="L", url="u", score=50)
+        upsert_job(self.conn, job)
+        save_job_embedding(self.conn, "j", self.provider.model_name, [0.1], 10, "semantic:x")
+
+    def status(self):
+        return self.conn.execute("SELECT embedding_status FROM jobs WHERE id='j'").fetchone()[0]
+
+    def test_removed_changed_and_unchanged_pillars(self):
+        from radar.semantic import ensure_profile_embeddings
+
+        a = {"category": "Kernel", "description": "drivers", "keywords": ["linux"]}
+        b = {"category": "Cloud", "description": "k8s", "keywords": ["docker"]}
+        emb = ensure_profile_embeddings(self.conn, {"deep_domain_expertise": [a, b]}, self.provider)
+        self.assertEqual(set(emb), {"Kernel", "Cloud"})
+        self.assertEqual(self.status(), "pending")  # first build re-queues
+
+        save_job_embedding(self.conn, "j", self.provider.model_name, [0.1], 10, "semantic:x")
+        ensure_profile_embeddings(self.conn, {"deep_domain_expertise": [a, b]}, self.provider)
+        self.assertEqual(self.status(), "done")  # unchanged profile: no churn
+
+        a2 = dict(a, description="completely different text")
+        emb = ensure_profile_embeddings(self.conn, {"deep_domain_expertise": [a2, b]}, self.provider)
+        self.assertEqual(self.status(), "pending")  # edited pillar re-embedded
+        self.assertNotEqual(emb["Kernel"], ensure_profile_embeddings(
+            self.conn, {"deep_domain_expertise": [a, b]}, self.provider)["Kernel"])
+
+        save_job_embedding(self.conn, "j", self.provider.model_name, [0.1], 10, "semantic:x")
+        emb = ensure_profile_embeddings(self.conn, {"deep_domain_expertise": [b]}, self.provider)
+        self.assertEqual(set(emb), {"Cloud"})  # removed pillar gone from result...
+        self.assertEqual(set(get_profile_embeddings(self.conn, self.provider.model_name)), {"Cloud"})  # ...and cache
+        self.assertEqual(self.status(), "pending")
+
+    def test_no_category_is_cached_under_default(self):
+        from radar.semantic import ensure_profile_embeddings
+
+        profile = {"deep_domain_expertise": [{"description": "x"}]}
+        self.assertEqual(set(ensure_profile_embeddings(self.conn, profile, self.provider)), {"General Systems"})
+        save_job_embedding(self.conn, "j", self.provider.model_name, [0.1], 10, "semantic:x")
+        ensure_profile_embeddings(self.conn, profile, self.provider)
+        self.assertEqual(self.status(), "done")  # not re-embedded every run
