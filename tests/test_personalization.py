@@ -163,3 +163,30 @@ class TestCliDispatch(unittest.TestCase):
 
     def test_status_passes_through(self):
         self.assertEqual(self.run_cli("status", "sre", "offer").call_args[0][1:], ("sre", "offer"))
+
+
+class TestScoreThresholds(unittest.TestCase):
+    def run_sync(self, **kw):
+        from radar import cli
+
+        conn = get_db(":memory:")
+        job = Job(id="j1", company_id="acme", title="SRE", location="Remote", url="u", score=60)
+        source = MagicMock()
+        source.fetch.return_value = [RawJob(id="j1", company_id="acme", title="SRE", location="Remote", url="u")]
+        engine = MagicMock()
+        engine.process.return_value = job
+        alert = MagicMock(snapshot=False)
+        args = argparse.Namespace(company=None, min_score=50, sinks="", notify=False, force_notify=False, **kw)
+        real = cli.get_sink
+        with patch.object(cli, "get_db", return_value=conn), \
+             patch.object(cli, "load_targets", return_value=[CompanyTarget(id="acme", name="Acme")]), \
+             patch.object(cli, "get_source", return_value=source), patch.object(cli, "PipelineEngine", return_value=engine), \
+             patch.object(cli, "get_sink", side_effect=lambda n: real("db") if n == "db" else alert):
+            args.sinks = "telegram"
+            cli.cmd_sync(args)
+        stored = conn.execute("SELECT count(*) FROM jobs").fetchone()[0]
+        return stored, alert.export.call_args[0][1]["min_score"]
+
+    def test_store_and_notify_thresholds_are_independent(self):
+        self.assertEqual(self.run_sync(notify_min_score=70), (1, 70))  # stored at 60 though notify bar is 70
+        self.assertEqual(self.run_sync(notify_min_score=None), (1, None))  # sink falls back to its config

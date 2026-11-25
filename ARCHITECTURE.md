@@ -34,7 +34,7 @@ Job Radar is an automated career intelligence and scoring engine. Scoring is dri
 │  6. ProfileMatchStage   profile skill_matrix → match % + pitch bullets   │
 │  7. FreshnessStage      <7d +20 … >75d -30                               │
 └───────────────────────────────┬──────────────────────────────────────────┘
-                                │ Job (score >= --min-score)
+                                │ Job (score >= --min-score; Telegram: >= --notify-min-score)
                                 ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
 │ Sink plugins (radar/sinks, keyed by `name`, chosen with --sinks/--notify)│

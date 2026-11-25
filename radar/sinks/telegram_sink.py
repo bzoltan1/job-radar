@@ -107,7 +107,7 @@ class TelegramSink(BaseSink):
         if min_score is None:
             min_score = tg_cfg["min_score"]
         if min_score is None:
-            print("[-] Telegram: no score threshold (--min-score or JOB_RADAR_NOTIFY_MIN_SCORE); skipping.", file=sys.stderr)
+            print("[-] Telegram: no score threshold (--notify-min-score or JOB_RADAR_NOTIFY_MIN_SCORE); skipping.", file=sys.stderr)
             return
 
         min_salary = tg_cfg["min_salary"]

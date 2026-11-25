@@ -204,7 +204,7 @@ When `OBSIDIAN_VAULT_PATH` is set (otherwise the sink is skipped), exports struc
 - **`Job Radar Dashboard.md`**: Master dashboard with a Dataview pipeline table and static fallback tables.
 
 ### 4. Telegram Alerts
-Dispatches HTML-formatted push alerts with clickable application links whenever a new role exceeds `JOB_RADAR_NOTIFY_MIN_SCORE` or `JOB_RADAR_NOTIFY_MIN_SALARY`.
+Dispatches HTML-formatted push alerts with clickable application links whenever a new role exceeds `JOB_RADAR_NOTIFY_MIN_SCORE` (or `--notify-min-score`) or `JOB_RADAR_NOTIFY_MIN_SALARY`. `--min-score` only controls what is stored.
 
 ---
 

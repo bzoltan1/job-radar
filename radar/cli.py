@@ -98,7 +98,7 @@ def cmd_sync(args):
 
     sink_context = {
         "db_conn": conn,
-        "min_score": args.min_score,
+        "min_score": getattr(args, "notify_min_score", None),  # None: telegram sink uses its configured threshold
         "force_notify": getattr(args, "force_notify", False),
         "new_job_ids": new_job_ids,
     }
@@ -287,6 +287,7 @@ def _main():
     p_sync = sub.add_parser("sync", help="Scrape ATS sources, run pipeline stages, and export to sinks")
     p_sync.set_defaults(func=cmd_sync)
     p_sync.add_argument("--min-score", type=int, default=50, help="Minimum score to store (default: 50)")
+    p_sync.add_argument("--notify-min-score", type=int, default=None, help="Minimum score for a Telegram alert (default: JOB_RADAR_NOTIFY_MIN_SCORE or settings; unset skips Telegram)")
     p_sync.add_argument("--company", help="Only sync a specific company ID")
     p_sync.add_argument("--sinks", default="db,rss,obsidian", help="Comma-separated sink names; db always runs (default: db,rss,obsidian)")
     p_sync.add_argument("--notify", action="store_true", help="Dispatch notifications (telegram, desktop)")
