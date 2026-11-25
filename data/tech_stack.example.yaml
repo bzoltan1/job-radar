@@ -2,10 +2,10 @@
 # Copy this file to data/tech_stack.local.yaml and customize with your tracked technologies.
 
 tech_stack:
-  - name: "golang"
-    pattern: "\\b(golang|go)\\b"
-  - name: "c"
-    pattern: "\\bc\\b"
+  # "go" and "c" are English words: plain `go` / `c` entries (no pattern) use a built-in
+  # case-sensitive, list-context pattern. Prefer them over a hand-written \bgo\b.
+  - go
+  - c
   - name: "c++"
     pattern: "\\bc\\+\\+"
   - name: "rust"

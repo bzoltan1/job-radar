@@ -294,6 +294,15 @@ class TestConfigAndEnvironment(unittest.TestCase):
         # 30 (systems) + 20 (4 tech matches * 5) = 50
         self.assertEqual(res.score_delta, 50)
 
+    def test_ambiguous_tech_needs_tech_context(self):
+        for text in ("We go the extra mile. Plan C.", "Let's go to market", "Go for it", "Vitamin C is good"):
+            self.assertEqual(find_tech_matches(text), [], text)
+        for text, want in (
+            ("Skills: Go, Rust", "go"), ("Senior Go developer", "go"), ("services in Go", "go"),
+            ("Golang services", "go"), ("C/C++ firmware", "c"), ("written in C", "c"),
+        ):
+            self.assertIn(want, find_tech_matches(text), text)
+
     def test_tech_stack_word_boundaries(self):
         matches = find_tech_matches("Monitoring system status and focus with cargo economic tools.")
         self.assertNotIn("c", matches)

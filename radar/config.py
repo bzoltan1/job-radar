@@ -139,6 +139,23 @@ def load_profile() -> dict:
         return {}
 
 
+# "go" and "c" are ordinary English words. Match only the capitalised form inside a tech list
+# ("Go, Rust", "C/C++"), after "in/with/using", or before a role/code noun ("Go developer").
+# shortcut: heuristic, misses prose like "we love Go." and can hit "Plan C, then...".
+_TECH_NOUNS = r"developer|engineer|programming|language|code|codebase|internals|libraries|library|development|runtime|bindings?|services?"
+
+
+def _ambiguous_tech_pattern(word: str) -> str:
+    return (
+        rf"(?-i:\b{word}\b(?=\s*[,/;)]|\s+(?:{_TECH_NOUNS})\b)"
+        rf"|(?<=[,/(])\s?{word}\b|(?<=\bin )(?:{word})\b|(?<=\bwith )(?:{word})\b|(?<=\busing )(?:{word})\b)"
+    )
+
+
+TECH_PATTERN_GO = r"\bgolang\b|" + _ambiguous_tech_pattern("Go")
+TECH_PATTERN_C = _ambiguous_tech_pattern("C")
+
+
 def _normalize_tech_item(item: Any) -> Optional[Tuple[str, str]]:
     """Convert string or dict into (canonical_name, regex_pattern)."""
     if isinstance(item, str):
@@ -146,9 +163,9 @@ def _normalize_tech_item(item: Any) -> Optional[Tuple[str, str]]:
         if not name:
             return None
         if name == "c":
-            return ("c", r"\bc\b")
+            return ("c", TECH_PATTERN_C)
         if name == "go":
-            return ("go", r"\bgo\b")
+            return ("go", TECH_PATTERN_GO)
         if name in ("c++", "cpp"):
             return ("c++", r"\bc\+\+")
         return (name, rf"\b{re.escape(name)}\b")
