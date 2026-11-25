@@ -328,3 +328,31 @@ class TestConfigAndEnvironment(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestBadConfigFiles(unittest.TestCase):
+    def test_broken_yaml_raises_config_error_naming_file(self):
+        import tempfile
+        from radar.config import ConfigError, _read_yaml_cached
+
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+            f.write("candidate:\n\t bad: [unclosed\n")
+        cache = {"mtime": None, "data": None}
+        with self.assertRaises(ConfigError) as cm:
+            _read_yaml_cached(f.name, cache, "profile", {})
+        self.assertIn(f.name, str(cm.exception))
+
+    def test_missing_configured_file_raises(self):
+        from radar.config import ConfigError, _read_yaml_cached
+
+        with self.assertRaises(ConfigError):
+            _read_yaml_cached("/nonexistent/profile.yaml", {"mtime": None, "data": None}, "profile", {})
+
+    def test_unset_path_and_empty_file_use_default(self):
+        import tempfile
+        from radar.config import _read_yaml_cached
+
+        self.assertEqual(_read_yaml_cached(None, {"mtime": None, "data": None}, "x", {}), {})
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+            pass
+        self.assertEqual(_read_yaml_cached(f.name, {"mtime": None, "data": None}, "x", {"d": 1}), {"d": 1})

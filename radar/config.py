@@ -4,6 +4,7 @@ import functools
 import glob
 import os
 import re
+import sys
 from typing import Any, Dict, List, Optional, Tuple
 import yaml
 
@@ -105,38 +106,43 @@ _SETTINGS_CACHE: Dict[str, Any] = {"mtime": None, "data": None}
 _PROFILE_CACHE: Dict[str, Any] = {"mtime": None, "data": None}
 _TECH_STACK_CACHE: Dict[str, Any] = {"mtime": None, "data": None, "compiled": None, "regex": None}
 
+def _parse_yaml(path: str, label: str) -> Tuple[float, Any]:
+    """Return (mtime, parsed YAML). A missing or unparsable file raises ConfigError naming it;
+    swallowing that would silently score every job at 0%."""
+    try:
+        mtime = os.path.getmtime(path)
+        with open(path, "r", encoding="utf-8") as f:
+            return mtime, yaml.safe_load(f)
+    except (OSError, yaml.YAMLError) as e:
+        raise ConfigError(f"cannot read {label} file {path}: {e}") from e
+
+
+def _read_yaml_cached(path: Optional[str], cache: Dict[str, Any], label: str, default: Any) -> Any:
+    """Parse an optional YAML config file, cached by mtime. No path configured -> default."""
+    if not path:
+        return default
+    if cache["data"] is not None and cache["mtime"] == _mtime(path):
+        return cache["data"]
+    cache["mtime"], data = _parse_yaml(path, label)
+    cache["data"] = default if data is None else data
+    return cache["data"]
+
+
+def _mtime(path: str) -> Optional[float]:
+    try:
+        return os.path.getmtime(path)
+    except OSError:
+        return None  # lets _parse_yaml raise the proper ConfigError
+
+
 def load_settings() -> dict:
     """Load optional global settings from config.yaml or data/settings.yaml."""
-    if SETTINGS_FILE and os.path.exists(SETTINGS_FILE):
-        try:
-            mtime = os.path.getmtime(SETTINGS_FILE)
-            if _SETTINGS_CACHE["mtime"] == mtime and _SETTINGS_CACHE["data"] is not None:
-                return _SETTINGS_CACHE["data"]
-            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f) or {}
-                _SETTINGS_CACHE["mtime"] = mtime
-                _SETTINGS_CACHE["data"] = data
-                return data
-        except Exception:
-            return {}
-    return {}
+    return _read_yaml_cached(SETTINGS_FILE, _SETTINGS_CACHE, "settings", {})
 
 
 def load_profile() -> dict:
     """Load candidate career profile, domain expertise, and scoring weights."""
-    if not PROFILE_FILE or not os.path.exists(PROFILE_FILE):
-        return {}
-    try:
-        mtime = os.path.getmtime(PROFILE_FILE)
-        if _PROFILE_CACHE["mtime"] == mtime and _PROFILE_CACHE["data"] is not None:
-            return _PROFILE_CACHE["data"]
-        with open(PROFILE_FILE, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
-            _PROFILE_CACHE["mtime"] = mtime
-            _PROFILE_CACHE["data"] = data
-            return data
-    except Exception:
-        return {}
+    return _read_yaml_cached(PROFILE_FILE, _PROFILE_CACHE, "profile", {})
 
 
 # "go" and "c" are ordinary English words. Match only the capitalised form inside a tech list
@@ -182,35 +188,27 @@ def _normalize_tech_item(item: Any) -> Optional[Tuple[str, str]]:
 
 def load_tech_stack() -> List[Dict[str, str]]:
     """Load tracked technology keywords and patterns from tech_stack.yaml."""
-    if not TECH_STACK_FILE or not os.path.exists(TECH_STACK_FILE):
+    if not TECH_STACK_FILE:
         return []
-    try:
-        mtime = os.path.getmtime(TECH_STACK_FILE)
-        if _TECH_STACK_CACHE["mtime"] == mtime and _TECH_STACK_CACHE["data"] is not None:
-            return _TECH_STACK_CACHE["data"]
+    if _TECH_STACK_CACHE["data"] is not None and _TECH_STACK_CACHE["mtime"] == _mtime(TECH_STACK_FILE):
+        return _TECH_STACK_CACHE["data"]
 
-        with open(TECH_STACK_FILE, "r", encoding="utf-8") as f:
-            raw = yaml.safe_load(f) or {}
+    mtime, raw = _parse_yaml(TECH_STACK_FILE, "tech stack")
+    raw = raw or {}
+    items: List[Any] = []
+    if isinstance(raw, list):
+        items = raw
+    elif isinstance(raw, dict):
+        items = raw.get("tech_stack") or raw.get("technologies") or []
 
-        items: List[Any] = []
-        if isinstance(raw, list):
-            items = raw
-        elif isinstance(raw, dict):
-            items = raw.get("tech_stack") or raw.get("technologies") or []
+    parsed = []
+    for it in items:
+        normalized = _normalize_tech_item(it)
+        if normalized:
+            parsed.append({"name": normalized[0], "pattern": normalized[1]})
 
-        parsed = []
-        for it in items:
-            normalized = _normalize_tech_item(it)
-            if normalized:
-                parsed.append({"name": normalized[0], "pattern": normalized[1]})
-
-        _TECH_STACK_CACHE["mtime"] = mtime
-        _TECH_STACK_CACHE["data"] = parsed
-        _TECH_STACK_CACHE["compiled"] = None
-        _TECH_STACK_CACHE["regex"] = None
-        return parsed
-    except Exception:
-        return []
+    _TECH_STACK_CACHE.update(mtime=mtime, data=parsed, compiled=None, regex=None)
+    return parsed
 
 
 def get_compiled_tech_stack() -> List[Tuple[str, re.Pattern]]:
@@ -432,8 +430,8 @@ def load_all_intel() -> Dict[str, dict]:
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     intel_map[cid] = yaml.safe_load(f) or {}
-            except Exception:
-                pass
+            except (OSError, yaml.YAMLError) as e:
+                print(f"[-] Warning: skipping unreadable intel dossier {path}: {e}", file=sys.stderr)
 
     if not intel_map and os.path.exists(LEGACY_INTEL_FILE):
         with open(LEGACY_INTEL_FILE, "r", encoding="utf-8") as f:
