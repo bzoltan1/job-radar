@@ -224,6 +224,45 @@ def cmd_stats(args):
         print(f"  - {s}")
 
 
+def cmd_embed(args):
+    """Process pending job embeddings locally and score semantic similarity."""
+    from radar.config import load_profile
+    from radar.db import get_db, get_pending_embedding_jobs, save_job_embedding
+    from radar.semantic import (
+        ensure_profile_embeddings,
+        evaluate_semantic_match,
+        get_embedding_provider,
+    )
+
+    conn = get_db()
+    profile = load_profile()
+    provider = get_embedding_provider()
+
+    profile_embeddings = ensure_profile_embeddings(conn, profile, provider, force=args.reindex_profile)
+    is_dense = False  # Local subword feature hashing model
+
+    pending = get_pending_embedding_jobs(conn, limit=args.batch_size)
+    if not pending:
+        print("[*] No jobs pending semantic embedding.")
+        return
+
+    print(f"[*] Processing {len(pending)} jobs locally using {provider.model_name}...")
+    texts = [f"{j['title']}\n{j.get('content', '')[:1500]}" for j in pending]
+    vectors = provider.embed_texts(texts)
+
+    updated = 0
+    scored = 0
+    for job, vec in zip(pending, vectors):
+        pillar, sim, bonus, tag = evaluate_semantic_match(vec, profile_embeddings, is_dense_model=is_dense)
+        save_job_embedding(conn, job["id"], provider.model_name, vec, bonus, tag)
+        updated += 1
+        if bonus > 0:
+            scored += 1
+            print(f"  + {job['company_id'].capitalize()}: {job['title'][:40]} -> {pillar} (sim: {sim:.2f}, +{bonus} pts)")
+
+    print(f"[+] Local semantic processing complete. Embedded: {updated}, Matched bonus: {scored}.")
+
+
 def main():
     try:
         _main()
@@ -276,6 +315,11 @@ def _main():
     # stats
     sub.add_parser("stats", help="Database statistics and plugin registry")
 
+    # embed
+    p_emb = sub.add_parser("embed", help="Run offline local semantic embedding and similarity scoring")
+    p_emb.add_argument("--batch-size", type=int, default=100, help="Number of pending jobs to process (default: 100)")
+    p_emb.add_argument("--reindex-profile", action="store_true", help="Force recomputing profile pillar embeddings")
+
     # discover
     p_disc = sub.add_parser("discover", help="Discover peer companies & search CNCF landscape")
     disc_sub = p_disc.add_subparsers(dest="discover_cmd", required=True)
@@ -308,6 +352,8 @@ def _main():
         cmd_company(args)
     elif args.command == "stats":
         cmd_stats(args)
+    elif args.command == "embed":
+        cmd_embed(args)
     elif args.command == "discover":
         if args.discover_cmd == "list":
             list_peers(args.category, args.tier, args.home_only)

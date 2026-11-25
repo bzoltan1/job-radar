@@ -29,4 +29,7 @@ echo "=== [$(date '+%Y-%m-%d %H:%M:%S')] Starting Job Radar sync ==="
 MIN_SCORE="${JOB_RADAR_NOTIFY_MIN_SCORE:-70}"
 "${PYTHON_CMD[@]}" "${SCRIPT_DIR}/radar.py" sync --min-score="${MIN_SCORE}" --notify "$@"
 
+# Run offline local semantic vector embedding on newly ingested jobs
+"${PYTHON_CMD[@]}" "${SCRIPT_DIR}/radar.py" embed --batch-size=100 || true
+
 echo "=== [$(date '+%Y-%m-%d %H:%M:%S')] Job Radar sync finished ==="

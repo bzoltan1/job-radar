@@ -44,9 +44,37 @@ def get_db(db_path: str = DB_PATH) -> sqlite3.Connection:
         for legacy in ("is_italy_direct", "is_local_direct"):  # legacy column names
             if legacy in cols:
                 conn.execute(f"ALTER TABLE jobs RENAME COLUMN {legacy} TO is_home_direct")
+        if "embedding_status" not in cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN embedding_status TEXT DEFAULT 'pending'")
+        if "semantic_score" not in cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN semantic_score INTEGER DEFAULT 0")
+        if "content" not in cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN content TEXT DEFAULT ''")
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS job_embeddings (
+                job_id TEXT PRIMARY KEY,
+                model TEXT NOT NULL,
+                dim INTEGER NOT NULL,
+                vector BLOB NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(job_id) REFERENCES jobs(id)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS profile_embeddings (
+                pillar_name TEXT PRIMARY KEY,
+                model TEXT NOT NULL,
+                dim INTEGER NOT NULL,
+                vector BLOB NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_active_score ON jobs(active, score DESC)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_salary ON jobs(salary_norm_max DESC)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_embedding ON jobs(embedding_status)")
     return conn
 
 
@@ -69,6 +97,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
     tags_str = ";".join(job.tags)
     matched_skills_str = ", ".join(job.profile.matched_skills)
     pitch_str = "\n".join(job.profile.pitch_bullets)
+    content_str = (job.content or "")[:4000]
 
     with conn:
         if job.first_seen:
@@ -78,8 +107,8 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
                     id, company_id, title, location, is_home_direct, is_emea_remote,
                     score, url, tags, salary_min, salary_max, salary_currency,
                     salary_display, salary_norm_max, profile_match_pct, matched_skills,
-                    pitch_bullets, first_seen, last_seen, active
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1)
+                    pitch_bullets, content, first_seen, last_seen, active
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1)
                 ON CONFLICT(id) DO UPDATE SET
                     title=excluded.title,
                     location=excluded.location,
@@ -95,6 +124,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
                     profile_match_pct=excluded.profile_match_pct,
                     matched_skills=excluded.matched_skills,
                     pitch_bullets=excluded.pitch_bullets,
+                    content=excluded.content,
                     first_seen=MIN(jobs.first_seen, excluded.first_seen),
                     last_seen=CURRENT_TIMESTAMP,
                     active=1
@@ -117,6 +147,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
                     job.profile.match_pct,
                     matched_skills_str,
                     pitch_str,
+                    content_str,
                     job.first_seen,
                 ),
             )
@@ -127,8 +158,8 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
                     id, company_id, title, location, is_home_direct, is_emea_remote,
                     score, url, tags, salary_min, salary_max, salary_currency,
                     salary_display, salary_norm_max, profile_match_pct, matched_skills,
-                    pitch_bullets, last_seen, active
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1)
+                    pitch_bullets, content, last_seen, active
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1)
                 ON CONFLICT(id) DO UPDATE SET
                     title=excluded.title,
                     location=excluded.location,
@@ -144,6 +175,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
                     profile_match_pct=excluded.profile_match_pct,
                     matched_skills=excluded.matched_skills,
                     pitch_bullets=excluded.pitch_bullets,
+                    content=excluded.content,
                     last_seen=CURRENT_TIMESTAMP,
                     active=1
                 """,
@@ -165,6 +197,7 @@ def upsert_job(conn: sqlite3.Connection, job: Job):
                     job.profile.match_pct,
                     matched_skills_str,
                     pitch_str,
+                    content_str,
                 ),
             )
 
@@ -245,3 +278,117 @@ def mark_notified(conn: sqlite3.Connection, job_ids: List[str]):
             "UPDATE jobs SET notified_at = CURRENT_TIMESTAMP WHERE id = ?",
             [(jid,) for jid in job_ids],
         )
+
+
+def serialize_vector(vec: List[float]) -> bytes:
+    """Pack float array into binary float32 buffer."""
+    import struct
+    return struct.pack(f"{len(vec)}f", *vec)
+
+
+def deserialize_vector(data: bytes) -> List[float]:
+    """Unpack binary float32 buffer into float list."""
+    import struct
+    count = len(data) // 4
+    return list(struct.unpack(f"{count}f", data))
+
+
+def get_pending_embedding_jobs(conn: sqlite3.Connection, limit: int = 50) -> List[Dict[str, Any]]:
+    """Retrieve active jobs pending semantic embedding."""
+    rows = conn.execute(
+        """
+        SELECT id, company_id, title, location, score, tags, content
+        FROM jobs
+        WHERE active = 1 AND (embedding_status = 'pending' OR embedding_status IS NULL)
+        ORDER BY score DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def save_job_embedding(
+    conn: sqlite3.Connection,
+    job_id: str,
+    model: str,
+    vector: List[float],
+    semantic_score: int,
+    semantic_tag: Optional[str] = None,
+):
+    """Save raw vector embedding and update job semantic score and tags."""
+    blob = serialize_vector(vector)
+    dim = len(vector)
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO job_embeddings (job_id, model, dim, vector, updated_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(job_id) DO UPDATE SET
+                model = excluded.model,
+                dim = excluded.dim,
+                vector = excluded.vector,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (job_id, model, dim, blob),
+        )
+
+        row = conn.execute(
+            "SELECT score, tags, semantic_score FROM jobs WHERE id = ?",
+            (job_id,),
+        ).fetchone()
+        if row:
+            old_sem = row["semantic_score"] or 0
+            base_score = (row["score"] or 0) - old_sem
+            new_score = base_score + semantic_score
+            tags = [t.strip() for t in (row["tags"] or "").split(";") if t.strip()]
+            tags = [t for t in tags if not t.startswith("semantic:")]
+            if semantic_tag:
+                tags.append(semantic_tag)
+            tags_str = ";".join(tags)
+
+            conn.execute(
+                """
+                UPDATE jobs
+                SET score = ?,
+                    semantic_score = ?,
+                    tags = ?,
+                    embedding_status = 'done'
+                WHERE id = ?
+                """,
+                (new_score, semantic_score, tags_str, job_id),
+            )
+
+
+def save_profile_embedding(
+    conn: sqlite3.Connection,
+    pillar_name: str,
+    model: str,
+    vector: List[float],
+):
+    """Save reference embedding for a profile domain pillar."""
+    blob = serialize_vector(vector)
+    dim = len(vector)
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO profile_embeddings (pillar_name, model, dim, vector, updated_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(pillar_name) DO UPDATE SET
+                model = excluded.model,
+                dim = excluded.dim,
+                vector = excluded.vector,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (pillar_name, model, dim, blob),
+        )
+
+
+def get_profile_embeddings(conn: sqlite3.Connection, model: str) -> Dict[str, List[float]]:
+    """Retrieve all cached profile pillar embeddings for a specific model."""
+    rows = conn.execute(
+        "SELECT pillar_name, vector FROM profile_embeddings WHERE model = ?",
+        (model,),
+    ).fetchall()
+    return {r["pillar_name"]: deserialize_vector(r["vector"]) for r in rows}
+

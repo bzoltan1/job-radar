@@ -3,10 +3,12 @@
 Automated job discovery, ATS scraping, and semantic scoring engine targeting Linux, Kernel, Systems, Observability, and Cloud Platform engineering roles.
 
 **Key Highlights:**
-- **ATS API Ingestion & Extensible Scrapers**: Queries public REST / GraphQL ATS endpoints directly (Greenhouse, Lever, Ashby, Workday, Deel, Recruitee, Workable, SmartRecruiters) and supports modular HTML scrapers for non-ATS portals (e.g. PagoPA).
+- **ATS API Ingestion & Extensible Scrapers**: Queries public REST / GraphQL ATS endpoints directly (Greenhouse, Lever, Ashby, Workday, Deel, Recruitee, Workable, SmartRecruiters) and supports modular HTML scrapers for non-ATS portals (e.g. PagoPA, Fly.io).
 - **Multi-Stage Scoring Pipeline**: Filters non-engineering roles, evaluates geographic eligibility & legal entity status, normalizes compensation, and scores candidate skill alignment.
+- **100% Local Semantic Vector Search**: Offline feature-hashed subword vectorizer (`local-subword-hash-384`) in pure Python. Zero external API calls, zero C extensions, and lightweight zero-ops design. Evaluates semantic similarity against candidate domain pillars and awards $+5$ to $+30$ bonus points for non-exact technical synonyms.
+- **Deferred Asynchronous Embeddings**: High-speed ATS ingestion decoupled from embedding math; `radar embed` processes un-embedded jobs asynchronously or via cron chaining.
 - **Custom Application Pitch Generator**: Dynamically crafts tailored CV & interview pitch bullets based on candidate profile.
-- **Multiple Output Sinks**: SQLite database, RSS 2.0 feed, Obsidian markdown vault (with Dataview dashboard), Telegram bot notifications, and desktop alerts.
+- **Multiple Output Sinks**: SQLite database (with automatic schema migrations and binary vector BLOBs), RSS 2.0 feed, Obsidian markdown vault (with Dataview dashboard), Telegram bot notifications, and desktop alerts.
 
 ---
 
@@ -86,6 +88,24 @@ I live in <COUNTRY> and can also work in <OTHER COUNTRIES>. I want <ROLE TYPES>,
 <paste data/profile.example.yaml here>
 ```
 
+### Domain Pillars & Semantic Vector Matching
+
+Job Radar combines deterministic regex filters with a **100% local semantic vector engine** (`local-subword-hash-384`).
+
+In `data/profile.local.yaml`, define your **Domain Pillars** under `deep_domain_expertise:`. Each pillar represents a signature technical specialization:
+```yaml
+deep_domain_expertise:
+  - category: "Storage Systems & Block Layer Reliability"
+    description: "Low-level Linux storage verification, crash-safety testing, device-mapper dm-flakey fault simulation, and BTRFS multi-device redundancy under power failure."
+    keywords: ["storage", "dm-flakey", "btrfs", "block device", "io_uring", "nvme", "page cache", "fsync"]
+```
+
+**How it works:**
+1. Reference embeddings are computed for each pillar and cached in SQLite (`profile_embeddings`).
+2. When jobs are ingested, `radar embed` projects job titles and content excerpts into the 384-dimensional vector space using FastText-style character $n$-grams ($n \in \{4,5\}$) and word bigrams with sublinear term-frequency weighting.
+3. Cosine similarity is computed against each pillar. Jobs with similarity above threshold receive $+5$ to $+30$ bonus points and are tagged with `semantic:<pillar_slug>` (e.g. `semantic:storage_systems_block_layer`).
+4. Catches non-exact technical synonyms (e.g. "fault tolerance", "packet pacing", "chaos testing", "Linux internals") without requiring exhaustive regex dictionaries.
+
 ### Keep your setup outside the checkout (multiple machines, public fork)
 
 Put your personal files in a **separate private git repo** (e.g. `~/job-radar-private/`) and point the env vars from `.env` at it (`JOB_RADAR_PROFILE`, `JOB_RADAR_TARGETS`, `JOB_RADAR_INTEL_DIR`, ...; see `.env.example`). The public checkout then stays a clean clone: `git pull` never touches your data, and your setup is versioned and synced on its own.
@@ -147,6 +167,18 @@ Update job tracking status (`new`, `reviewing`, `applied`, `interviewing`, `offe
 python3 radar.py status <job_id> applied
 ```
 
+### Local Semantic Embeddings
+Process pending un-embedded jobs and compute similarity scores against domain pillars:
+```bash
+python3 radar.py embed
+python3 radar.py embed --batch-size=100
+```
+
+Force recomputing profile reference vectors after updating domain pillars:
+```bash
+python3 radar.py embed --reindex-profile
+```
+
 View database & scoring statistics:
 ```bash
 python3 radar.py stats
@@ -157,7 +189,10 @@ python3 radar.py stats
 ## 📡 Sinks & Outputs
 
 ### 1. SQLite Database (`jobs.db`)
-Central store for all tracked roles, historical states, and notification timestamps.
+Central store for all tracked roles, historical states, notification timestamps, and vector embeddings:
+- **`jobs` table**: Role metadata, location eligibility flags, salary data, matched skills, `embedding_status`, and `semantic_score`.
+- **`job_embeddings` & `profile_embeddings` tables**: 384-dimensional binary IEEE-754 `float32` BLOBs.
+- **In-Place Schema Migration**: Automatic and non-destructive. Calling any `radar` command triggers `get_db()` which executes `ALTER TABLE` and `CREATE TABLE IF NOT EXISTS`, preserving 100% of existing historical data.
 
 ### 2. RSS 2.0 Feed (`feed.xml`)
 Every `sync` generates a standard RSS feed at `feed.xml`. Subscribe using any feed reader (**newsboat**, Thunderbird, Feedly, NetNewsWire).
