@@ -107,6 +107,33 @@ class TestSourceContract(unittest.TestCase):
         with patch(URLOPEN, side_effect=[first, http_error(500)]), self.assertRaises(FetchError):
             get_source("workday").fetch(self.target(ats="workday"))
 
+    def test_workday_splits_or_search_text_and_deduplicates(self):
+        seen_queries = []
+
+        def fake(req, **kw):
+            body = json.loads(req.data)
+            q = body.get("searchText", "")
+            seen_queries.append(q)
+            # Both queries return overlapping posting J_common, plus unique J_q
+            return resp({
+                "total": 2,
+                "jobPostings": [
+                    {"title": f"Common", "externalPath": "/job/X/J_common"},
+                    {"title": f"Role {q}", "externalPath": f"/job/X/J_{q}"},
+                ],
+            })
+
+        with patch(URLOPEN, side_effect=fake):
+            jobs = get_source("workday").fetch(
+                self.target(ats="workday", search_text="software OR platform OR sre")
+            )
+
+        self.assertEqual(seen_queries, ["software", "platform", "sre"])
+        # J_common deduplicated across 3 queries, total unique jobs = 1 common + 3 unique = 4
+        self.assertEqual(len(jobs), 4)
+        ids = {j.id for j in jobs}
+        self.assertEqual(ids, {"wd_acme_common", "wd_acme_software", "wd_acme_platform", "wd_acme_sre"})
+
     def test_workable_detail_failure_is_best_effort(self):
         listing = {"results": [{"shortcode": "A", "title": "SRE", "remote": True}, {"shortcode": "B", "title": "Dev"}]}
 
@@ -127,6 +154,28 @@ class TestSourceContract(unittest.TestCase):
             for ats in ("deel", "dynatrace", "sidero", "proxmox"):
                 with self.assertRaises(FetchError, msg=ats):
                     get_source(ats).fetch(self.target(ats=ats))
+
+    def test_sidero_parses_new_layout(self):
+        html_page = (
+            '<li><a class="careers-positions__row" href="/careers/senior-software-engineer">'
+            '<span class="careers-positions__job">'
+            '<span class="careers-positions__job-title">Senior / Staff Software Engineer</span>'
+            '<span class="careers-positions__job-meta small">Full-Time<!-- --> · <!-- -->Remote — Europe preferred</span>'
+            '</span></a></li>'
+        )
+
+        def fake(req, **kw):
+            url = req.full_url if hasattr(req, "full_url") else str(req)
+            if url.endswith("/careers/"):
+                return resp(html_page.encode())
+            return resp(b"<html>Job description text</html>")
+
+        with patch(URLOPEN, side_effect=fake):
+            jobs = get_source("sidero").fetch(self.target(ats="sidero"))
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0].id, "sidero_senior-software-engineer")
+        self.assertEqual(jobs[0].title, "Senior / Staff Software Engineer")
+        self.assertEqual(jobs[0].location, "Full-Time · Remote — Europe preferred")
 
     def test_unknown_scraper_raises(self):
         with self.assertRaises(FetchError):

@@ -114,6 +114,34 @@ class TestNotificationSinks(unittest.TestCase):
         DesktopSink().export([old], {"new_job_ids": set(), "force_notify": True})
         self.assertTrue(mock_run.called)
 
+    @patch("radar.sinks.telegram_sink.send_telegram_message")
+    def test_telegram_sink_filters_jobs_without_tech_or_profile_relevance(self, mock_send):
+        sink = TelegramSink()
+        # High score purely from tier, legal entity, freshness, but zero profile/role/tech match
+        bogus_job = make_dummy_job("b1", 100, ["tier:big_tech", "legal:home_entity", "age:fresh(<7d)"], title="Wind Technician")
+        bogus_job.profile = ProfileMatch(match_pct=0, matched_skills=[])
+
+        ctx = {"min_score": 70, "force_notify": True}
+        sink.export([bogus_job], ctx)
+        self.assertFalse(mock_send.called)
+
+        # Adding a tech or role tag or profile match qualifies it
+        qualified_job = make_dummy_job("q1", 100, ["tier:big_tech", "legal:home_entity", "role:systems_platform"], title="Systems Engineer")
+        qualified_job.profile = ProfileMatch(match_pct=0, matched_skills=[])
+        mock_send.return_value = True
+        sink.export([qualified_job], ctx)
+        self.assertTrue(mock_send.called)
+
+    @patch("subprocess.run")
+    @patch("shutil.which", return_value="/usr/bin/notify-send")
+    def test_desktop_sink_filters_jobs_without_tech_or_profile_relevance(self, mock_which, mock_run):
+        sink = DesktopSink()
+        bogus_job = make_dummy_job("b1", 100, ["tier:big_tech", "legal:home_entity"], title="Wind Technician")
+        bogus_job.profile = ProfileMatch(match_pct=0, matched_skills=[])
+
+        sink.export([bogus_job], {"force_notify": True})
+        self.assertFalse(mock_run.called)
+
 
 if __name__ == "__main__":
     unittest.main()

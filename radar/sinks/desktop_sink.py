@@ -16,6 +16,10 @@ class DesktopSink(BaseSink):
         eligible = [
             j for j in jobs
             if not any("loc:foreign_restriction" in t for t in j.tags)
+            and (
+                bool(j.profile and j.profile.match_pct > 0)
+                or any(t.startswith(("role:", "tech:", "semantic:")) for t in j.tags)
+            )
             and (new_ids is None or context.get("force_notify") or j.id in new_ids)
         ]
         notify_bin = shutil.which("notify-send")

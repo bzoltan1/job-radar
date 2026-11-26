@@ -15,7 +15,14 @@ from radar.sinks.telegram_sink import (
 
 
 def notify_new_jobs(jobs, token=None, chat_id=None):
-    valid_jobs = [j for j in jobs if not any("loc:foreign_restriction" in t for t in getattr(j, "tags", []))]
+    valid_jobs = [
+        j for j in jobs
+        if not any("loc:foreign_restriction" in t for t in getattr(j, "tags", []))
+        and (
+            bool(getattr(j, "profile", None) and j.profile.match_pct > 0)
+            or any(t.startswith(("role:", "tech:", "semantic:")) for t in getattr(j, "tags", []))
+        )
+    ]
     if not valid_jobs:
         return False
     return bool(send_jobs(valid_jobs, token=token, chat_id=chat_id))

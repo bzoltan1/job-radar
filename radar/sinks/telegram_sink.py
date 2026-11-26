@@ -120,6 +120,15 @@ class TelegramSink(BaseSink):
             if any("loc:foreign_restriction" in t for t in j.tags):
                 continue
 
+            # Drop jobs without technical or profile qualification
+            # (prevents company tier/entity bonuses + freshness from triggering alerts on non-technical roles)
+            has_tech_relevance = (
+                bool(j.profile and j.profile.match_pct > 0)
+                or any(t.startswith(("role:", "tech:", "semantic:")) for t in j.tags)
+            )
+            if not has_tech_relevance:
+                continue
+
             if j.score >= min_score or (min_salary is not None and j.salary.norm_max_eur and j.salary.norm_max_eur >= min_salary):
                 if force:
                     eligible_jobs.append(j)

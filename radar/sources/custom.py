@@ -125,12 +125,34 @@ class SideroSource(BaseSource):
     def fetch(self, target: CompanyTarget) -> List[RawJob]:
         page = http_get_text("https://www.siderolabs.com/careers/")
         cards = re.findall(
-            r'href="(/careers/[^"/]+/)"[^>]*class="[^"]*rd-vacancy-card[^"]*"[^>]*>(.*?)</a>',
+            r'<a class="careers-positions__row" href="(/careers/[^"/]+/?)"[^>]*>'
+            r'<span class="careers-positions__job">'
+            r'<span class="careers-positions__job-title">(.*?)</span>'
+            r'<span class="careers-positions__job-meta[^"]*">(.*?)</span>',
             page,
             re.DOTALL,
         )
-        if not cards:
-            raise FetchError("Sidero Labs: no vacancy cards parsed; page layout changed?")
+        if cards:
+            parsed = []
+            for path, title, meta in cards:
+                clean_title = html.unescape(re.sub(r"<[^>]+>", "", title)).strip()
+                clean_meta = html.unescape(re.sub(r"<!--.*?-->|<[^>]+>", "", meta)).strip()
+                parsed.append((path, clean_title, clean_meta))
+        else:
+            legacy_cards = re.findall(
+                r'href="(/careers/[^"/]+/)"[^>]*class="[^"]*rd-vacancy-card[^"]*"[^>]*>(.*?)</a>',
+                page,
+                re.DOTALL,
+            )
+            if not legacy_cards:
+                raise FetchError("Sidero Labs: no vacancy cards parsed; page layout changed?")
+            parsed = []
+            for path, inner in legacy_cards:
+                title_m = re.search(r'<h3[^>]*>(.*?)</h3>', inner)
+                meta_tags = re.findall(r'<span class="rd-vacancy-card__tag">(.*?)</span>', inner)
+                title = html.unescape(title_m.group(1)).strip() if title_m else ""
+                loc = html.unescape(meta_tags[1]).strip() if len(meta_tags) > 1 else (meta_tags[0].strip() if meta_tags else "")
+                parsed.append((path, title, loc))
 
         def detail_text(job_url: str) -> str:  # best-effort job text
             try:
@@ -141,20 +163,18 @@ class SideroSource(BaseSource):
             clean = re.sub(r"<script[^>]*>.*?</script>", "", clean, flags=re.DOTALL)
             return " ".join(re.sub(r"<[^>]+>", " ", clean).split())
 
-        urls = [f"https://www.siderolabs.com{path}" for path, _ in cards]
+        urls = [f"https://www.siderolabs.com{path}" for path, _, _ in parsed]
         with ThreadPoolExecutor(max_workers=8) as pool:
             contents = list(pool.map(detail_text, urls))
 
         jobs = []
-        for (path, inner), job_url, content in zip(cards, urls, contents):
-            title_m = re.search(r'<h3[^>]*>(.*?)</h3>', inner)
-            meta_tags = re.findall(r'<span class="rd-vacancy-card__tag">(.*?)</span>', inner)
+        for (path, title, loc), job_url, content in zip(parsed, urls, contents):
             jobs.append(
                 RawJob(
                     id=f"sidero_{path.strip('/').split('/')[-1]}",
                     company_id=target.id,
-                    title=html.unescape(title_m.group(1)).strip() if title_m else "",
-                    location=html.unescape(meta_tags[1]).strip() if len(meta_tags) > 1 else (meta_tags[0].strip() if meta_tags else ""),
+                    title=title,
+                    location=loc,
                     url=job_url,
                     content=content,
                 )
